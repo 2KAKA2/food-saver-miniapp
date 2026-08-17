@@ -2,7 +2,7 @@ fastapi==0.141.1
 uvicorn[standard]==0.34.0
 SQLAlchemy==2.0.36
 alembic==1.14.0
-pydantic-settings==2.7.0
+pydantic-settings==2.15.0
 python-multipart==0.0.32
 httpx==0.28.1
 PyMySQL==1.1.1
