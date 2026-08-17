@@ -52,6 +52,7 @@ def get_or_create_user(
     openid: str,
     unionid: str | None = None,
     nickname: str | None = None,
+    legal_version: str,
 ) -> User:
     user = db.scalar(select(User).where(User.openid == openid))
     now = datetime.now()
@@ -72,6 +73,8 @@ def get_or_create_user(
             user.unionid = unionid
         if nickname:
             user.nickname = nickname
+    user.legal_version = legal_version
+    user.legal_accepted_at = now
     ensure_personal_household(db, user)
     return user
 
@@ -156,6 +159,10 @@ def get_current_user(
     user = db.get(User, session.user_id)
     if not user or user.status != "active":
         raise HTTPException(status_code=401, detail="账号不可用")
+    if user.legal_version != settings.legal_version:
+        session.revoked_at = now
+        db.commit()
+        raise HTTPException(status_code=401, detail="用户协议或隐私政策已更新，请重新阅读并登录")
     session.last_seen_at = now
     return user
 

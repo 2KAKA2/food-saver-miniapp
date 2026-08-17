@@ -67,6 +67,7 @@
     <view class="card section legal-list">
       <view class="legal-row" @tap="openLegal('agreement')"><text>用户协议</text><text>›</text></view>
       <view class="legal-row" @tap="openLegal('privacy')"><text>隐私政策</text><text>›</text></view>
+      <button class="contact-row" open-type="contact"><text>联系运营者</text><text>›</text></button>
       <view class="legal-row danger-row" @tap="deleteAccount"><text>注销账号</text><text>›</text></view>
     </view>
 
@@ -351,6 +352,8 @@ onShow(load)
 .small-button { width: 130rpx; height: 74rpx; line-height: 74rpx; padding: 0; border-radius: 14rpx; background: #2f7d4a; color: #fff; font-size: 25rpx; }
 .logout-button { margin-top: 34rpx; background: transparent; color: #bd4249; font-size: 27rpx; }
 .legal-row { display: flex; justify-content: space-between; padding: 22rpx 0; border-bottom: 1rpx solid #edf0ed; font-size: 26rpx; }
+.contact-row { display: flex; align-items: center; justify-content: space-between; width: 100%; height: auto; margin: 0; padding: 22rpx 0; border: 0; border-bottom: 1rpx solid #edf0ed; border-radius: 0; background: transparent; color: #27362c; font-size: 26rpx; line-height: normal; text-align: left; }
+.contact-row::after { border: 0; }
 .legal-row:last-child { border-bottom: none; }
 .danger-row { color: #bd4249; }
 .small { padding: 24rpx; }

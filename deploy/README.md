@@ -35,7 +35,7 @@ docker compose --env-file .env.deploy ps
 
 ## 数据备份
 
-每天至少备份一次，并将备份文件及校验文件同步到另一存储位置：
+每天至少备份一次，并将备份文件及校验文件同步到另一存储位置。服务器本地备份默认保留 30 天，可通过 `BACKUP_RETENTION_DAYS` 调整；外部对象存储也应配置相同或更短的生命周期：
 
 ```bash
 chmod +x deploy/backup.sh deploy/restore.sh
@@ -59,4 +59,4 @@ docker compose --env-file .env.deploy logs --tail=200 caddy
 curl -fsS https://你的API域名/health/ready
 ```
 
-就绪检查同时验证数据库与 Redis。生产环境中任一依赖不可用都会返回 503，容器健康检查会据此阻止流量进入异常实例。依赖漏洞由 GitHub Dependabot 和持续集成审计跟踪。
+就绪检查同时验证数据库与 Redis。生产环境中任一依赖不可用都会返回 503，容器健康检查会据此阻止流量进入异常实例。四个容器的标准输出日志按单文件 10 MB、最多 5 个文件轮转，避免无限占用磁盘；仍应配置外部可用性告警。依赖漏洞由 GitHub Dependabot 和持续集成审计跟踪。

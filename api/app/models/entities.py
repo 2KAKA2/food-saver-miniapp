@@ -22,6 +22,8 @@ class User(Base, TimestampMixin):
     avatar_url: Mapped[str] = mapped_column(String(500), default="")
     status: Mapped[str] = mapped_column(String(20), default="active", index=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    legal_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    legal_accepted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class UserSession(Base):

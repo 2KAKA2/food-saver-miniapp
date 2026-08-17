@@ -15,7 +15,7 @@
   "mp-weixin": {
     "appid": "touristappid",
     "setting": {
-      "urlCheck": false,
+      "urlCheck": true,
       "es6": true,
       "minified": true
     },

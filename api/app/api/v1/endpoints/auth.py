@@ -6,6 +6,7 @@ import secrets
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.session import get_db
 from app.models.entities import (
     Household,
@@ -41,6 +42,13 @@ from app.services.rate_limit import login_rate_limit
 router = APIRouter()
 
 
+def verify_legal_version(value: str) -> str:
+    cleaned = value.strip()
+    if cleaned != settings.legal_version:
+        raise HTTPException(status_code=409, detail="用户协议或隐私政策已更新，请重新阅读并同意")
+    return cleaned
+
+
 def user_out(user: User) -> UserOut:
     return UserOut(id=user.id, nickname=user.nickname)
 
@@ -56,11 +64,13 @@ def login_out(db: Session, user: User, token: str, session: UserSession) -> Logi
 
 @router.post("/wechat", response_model=LoginOut, dependencies=[Depends(login_rate_limit)])
 def wechat_login(payload: WechatLoginRequest, db: Session = Depends(get_db)):
+    legal_version = verify_legal_version(payload.legal_version)
     identity = exchange_wechat_code(payload.code)
     user = get_or_create_user(
         db,
         openid=identity["openid"],
         unionid=identity.get("unionid"),
+        legal_version=legal_version,
     )
     token, session = create_session(db, user)
     return login_out(db, user, token, session)
@@ -70,7 +80,13 @@ def wechat_login(payload: WechatLoginRequest, db: Session = Depends(get_db)):
 def dev_login(payload: DevLoginRequest, db: Session = Depends(get_db)):
     if not check_dev_key(payload.dev_key):
         raise HTTPException(status_code=404, detail="接口不存在")
-    user = get_or_create_user(db, openid=f"dev:{payload.openid}", nickname=payload.nickname)
+    legal_version = verify_legal_version(payload.legal_version)
+    user = get_or_create_user(
+        db,
+        openid=f"dev:{payload.openid}",
+        nickname=payload.nickname,
+        legal_version=legal_version,
+    )
     token, session = create_session(db, user)
     return login_out(db, user, token, session)
 
@@ -150,6 +166,8 @@ def delete_account(
     user.nickname = "已注销用户"
     user.avatar_url = ""
     user.status = "deleted"
+    user.legal_version = None
+    user.legal_accepted_at = None
     user.updated_at = now
     db.commit()
     return Response(status_code=204)

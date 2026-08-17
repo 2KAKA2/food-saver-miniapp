@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import date
 import json
 import re
 import sys
@@ -22,8 +23,15 @@ REQUIRED_DEPLOY_KEYS = {
     "WECHAT_APP_ID",
     "WECHAT_APP_SECRET",
     "ZHIPU_API_KEY",
+    "LEGAL_VERSION",
 }
-REQUIRED_MINIAPP_KEYS = {"VITE_API_BASE_URL", "VITE_AUTH_MODE"}
+REQUIRED_MINIAPP_KEYS = {
+    "VITE_API_BASE_URL",
+    "VITE_AUTH_MODE",
+    "VITE_LEGAL_VERSION",
+    "VITE_OPERATOR_NAME",
+    "VITE_AI_PROVIDER_NAME",
+}
 PLACEHOLDER_PARTS = (
     "example.com",
     "replace-with",
@@ -96,6 +104,20 @@ def main() -> int:
     for key in missing_keys(miniapp, REQUIRED_MINIAPP_KEYS):
         errors.append(f"小程序配置缺少 {key}")
 
+    weixin_settings = manifest.get("mp-weixin", {}).get("setting", {})
+    if weixin_settings.get("urlCheck") is not True:
+        errors.append("正式小程序必须开启服务器域名校验")
+    if manifest.get("uniStatistics", {}).get("enable") is not False:
+        errors.append("首发版本必须显式关闭未披露的 uniStatistics")
+
+    legal_version = deploy.get("LEGAL_VERSION", "")
+    try:
+        date.fromisoformat(legal_version)
+    except ValueError:
+        errors.append("LEGAL_VERSION 必须是 YYYY-MM-DD 格式的有效日期")
+    if miniapp.get("VITE_LEGAL_VERSION") != legal_version:
+        errors.append("前后端用户协议与隐私政策版本不一致")
+
     if not args.template:
         for key in sorted(REQUIRED_DEPLOY_KEYS):
             if is_placeholder(deploy.get(key, "")):
@@ -110,7 +132,6 @@ def main() -> int:
             errors.append("WECHAT_APP_ID 格式不正确")
         if manifest_app_id != app_id:
             errors.append("manifest.json 的微信 AppID 与服务器配置不一致")
-
         domain = deploy.get("API_DOMAIN", "")
         if "://" in domain or "/" in domain or "." not in domain:
             errors.append("API_DOMAIN 应填写不带协议和路径的完整域名")
@@ -130,6 +151,7 @@ def main() -> int:
             errors.append("正式小程序必须使用微信登录模式")
         if miniapp.get("VITE_DEV_LOGIN_KEY") or miniapp.get("VITE_DEV_OPENID"):
             errors.append("正式小程序配置不能包含开发登录信息")
+
 
     if errors:
         for error in errors:

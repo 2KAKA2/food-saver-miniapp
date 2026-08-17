@@ -5,12 +5,14 @@ from pydantic import BaseModel, Field, field_validator
 
 class WechatLoginRequest(BaseModel):
     code: str = Field(min_length=1, max_length=200)
+    legal_version: str = Field(min_length=1, max_length=20)
 
 
 class DevLoginRequest(BaseModel):
     openid: str = Field(default="local-user", min_length=1, max_length=80)
     nickname: str = Field(default="本地体验用户", min_length=1, max_length=80)
     dev_key: str = Field(min_length=1, max_length=200)
+    legal_version: str = Field(min_length=1, max_length=20)
 
 
 class UserOut(BaseModel):

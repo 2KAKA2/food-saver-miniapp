@@ -10,6 +10,12 @@ if [[ ! -f "$deploy_env" ]]; then
   exit 1
 fi
 
+retention_days="${BACKUP_RETENTION_DAYS:-30}"
+if [[ ! "$retention_days" =~ ^[1-9][0-9]*$ ]]; then
+  echo "BACKUP_RETENTION_DAYS must be a positive integer." >&2
+  exit 1
+fi
+
 backup_dir="$project_dir/backups"
 mkdir -p "$backup_dir"
 chmod 700 "$backup_dir"
@@ -32,6 +38,10 @@ mv "$temporary_file" "$final_file"
 sha256sum "$final_file" > "${final_file}.sha256"
 chmod 600 "$final_file" "${final_file}.sha256"
 trap - EXIT
+
+find "$backup_dir" -maxdepth 1 -type f \
+  \( -name 'food_saver_*.sql.gz' -o -name 'food_saver_*.sql.gz.sha256' \) \
+  -mtime "+$retention_days" -print -delete
 
 echo "Backup created: $final_file"
 echo "Copy both the backup and checksum to storage outside this server."

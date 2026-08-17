@@ -1,11 +1,11 @@
 <template>
   <view class="legal-page">
     <text class="title">食尽其用用户协议</text>
-    <text class="date">更新日期：2026年8月17日</text>
+    <text class="date">更新日期：{{ LEGAL_DATE_LABEL }}</text>
 
     <view class="section">
       <text class="heading">一、服务内容</text>
-      <text class="paragraph">食尽其用提供家庭食材库存管理、保质期提示、家庭共享和人工智能菜谱建议。你应当提供真实、合法且有权处理的信息，并妥善保管家庭邀请码。</text>
+      <text class="paragraph">本协议由你与{{ OPERATOR_NAME }}共同订立。食尽其用提供家庭食材库存管理、保质期提示、家庭共享和人工智能菜谱建议。你应当提供真实、合法且有权处理的信息，并妥善保管家庭邀请码。</text>
     </view>
     <view class="section">
       <text class="heading">二、菜谱与保质期提示</text>
@@ -25,10 +25,15 @@
     </view>
     <view class="section">
       <text class="heading">六、联系我们</text>
-      <text class="paragraph">如有问题，可通过小程序内的微信客服联系运营者。运营主体以微信公众平台展示的信息为准。</text>
+      <text class="paragraph">如有问题，可点击下方按钮通过微信客服联系{{ OPERATOR_NAME }}。</text>
+      <button class="contact-button" open-type="contact">联系运营者</button>
     </view>
   </view>
 </template>
+
+<script setup>
+import { LEGAL_DATE_LABEL, OPERATOR_NAME } from '../../config/legal'
+</script>
 
 <style scoped>
 .legal-page { min-height: 100vh; padding: 36rpx 34rpx 70rpx; background: #fff; }
@@ -38,5 +43,5 @@
 .section { margin-top: 36rpx; }
 .heading { font-size: 29rpx; font-weight: 700; }
 .paragraph { margin-top: 14rpx; color: #526058; font-size: 26rpx; line-height: 1.9; text-align: justify; }
+.contact-button { margin-top: 24rpx; background: #e7f5eb; color: #2f7d4a; font-size: 26rpx; }
 </style>
-

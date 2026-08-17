@@ -1,6 +1,6 @@
 # 食尽其用：AI 家庭食材库存与菜谱生成助手
 
-一个面向家庭食材管理的课程演示项目。用户可以通过手机录入食材、查看临期提醒、拍照识别食材，并根据现有库存生成菜谱；确认制作后，系统会自动扣减对应库存。
+一个正在按正式发布标准建设的家庭食材管理微信小程序。用户可以通过手机录入食材、查看临期提醒、拍照识别食材，并根据现有库存生成菜谱；确认制作后，系统会自动扣减对应库存。
 
 ## 已实现功能
 
@@ -16,6 +16,8 @@
 - 确认制作接口支持幂等重试，避免重复扣减库存
 - Redis 分布式限流保护微信登录与 AI 接口
 - 账号注销、个人资料匿名化、用户协议和隐私政策页面
+- 服务端记录用户同意的协议版本和时间，前后端版本不一致时拒绝登录
+- 生产环境关闭交互式接口文档，容器日志与数据库备份自动轮转
 - H5 与微信小程序双端构建
 
 ## 项目结构
@@ -77,6 +79,9 @@ SEED_DEMO_DATA=false
 ```text
 VITE_AUTH_MODE=wechat
 VITE_API_BASE_URL=https://你的备案域名/api/v1
+VITE_LEGAL_VERSION=正式发布日期
+VITE_OPERATOR_NAME=已核实的运营主体名称
+VITE_AI_PROVIDER_NAME=实际使用的AI服务提供方名称
 ```
 
 本地开发可以保留 `ALLOW_DEV_LOGIN=true` 和 `VITE_AUTH_MODE=dev`，但生产服务器必须关闭开发登录。开发登录密钥只用于本机联调，不能用于正式环境。
@@ -105,13 +110,13 @@ npm run build:mp-weixin
 miniapp/dist/build/mp-weixin
 ```
 
-当前演示配置使用测试 AppID，并关闭开发阶段域名校验。使用真机调试时：
+当前代码仍使用测试 AppID，但正式域名校验已开启。使用本地真机调试时可在微信开发者工具中临时关闭域名校验：
 
 1. 确保手机和电脑连接同一局域网。
 2. 查询电脑局域网 IPv4 地址。
 3. 将 `miniapp/.env` 中的地址改为 `http://电脑局域网IP:8000/api/v1`。
 4. 重新执行 `npm run build:mp-weixin`。
-5. 确保 Windows 防火墙允许后端的 8000 端口访问。
+5. 确保 Windows 防火墙允许后端的 8000 端口访问；不要把关闭域名校验的设置用于正式体验版。
 
 正式上线时仍需配置真实微信 AppID、HTTPS 服务器和微信小程序合法域名。
 
@@ -159,7 +164,7 @@ docker compose --env-file .env.deploy config --quiet
 
 生产部署基线位于 `deploy/`，使用 Caddy 自动 HTTPS、FastAPI、MySQL 8.4 LTS 和 Redis。执行前需要准备备案域名、云服务器、微信 AppSecret 和 AI API Key，具体步骤见 `deploy/README.md`。
 
-从云资源准备到微信提审的逐项清单见 `deploy/RELEASE_CHECKLIST.md`。
+从云资源准备到微信提审的逐项清单见 `deploy/RELEASE_CHECKLIST.md`，可直接整理到微信公众平台的材料草案见 `docs/WECHAT_RELEASE_MATERIALS.md`。
 
 当前已验证能力、端到端测试证据和剩余上线条件见 `docs/RELEASE_STATUS.md`。
 

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { api } from '../api'
+import { LEGAL_VERSION } from '../config/legal'
 
 export const TOKEN_KEY = 'food_saver_access_token'
 export const HOUSEHOLD_KEY = 'food_saver_household_id'
@@ -62,10 +63,11 @@ export const useAuthStore = defineStore('auth', () => {
         openid: import.meta.env.VITE_DEV_OPENID || 'local-user',
         nickname: '本地体验用户',
         dev_key: import.meta.env.VITE_DEV_LOGIN_KEY || '',
+        legal_version: LEGAL_VERSION,
       })
     } else {
       const code = await wxLoginCode()
-      data = await api.wechatLogin({ code })
+      data = await api.wechatLogin({ code, legal_version: LEGAL_VERSION })
     }
     applyLogin(data)
     return data

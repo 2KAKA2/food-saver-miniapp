@@ -43,7 +43,12 @@ def client(db_session):
     with TestClient(app) as test_client:
         login = test_client.post(
             "/api/v1/auth/dev",
-            json={"openid": "default-test-user", "nickname": "测试用户", "dev_key": "test-dev-key"},
+            json={
+                "openid": "default-test-user",
+                "nickname": "测试用户",
+                "dev_key": "test-dev-key",
+                "legal_version": "2026-08-17",
+            },
         )
         assert login.status_code == 200
         data = login.json()

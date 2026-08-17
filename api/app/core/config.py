@@ -1,3 +1,4 @@
+from datetime import date
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -12,6 +13,7 @@ class Settings(BaseSettings):
     wechat_app_id: str = ""
     wechat_app_secret: str = ""
     session_ttl_days: int = 30
+    legal_version: str = "2026-08-17"
     allow_dev_login: bool = False
     dev_login_secret: str = ""
     zhipu_api_key: str = ""
@@ -49,6 +51,10 @@ class Settings(BaseSettings):
             problems.append("生产环境必须关闭演示数据")
         if not self.trusted_hosts or "*" in self.trusted_hosts:
             problems.append("生产环境必须配置明确的 ALLOWED_HOSTS")
+        try:
+            date.fromisoformat(self.legal_version)
+        except ValueError:
+            problems.append("用户协议与隐私政策版本必须是有效日期")
         if problems:
             raise RuntimeError("生产配置校验失败：" + "；".join(problems))
 

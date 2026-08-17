@@ -8,6 +8,11 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       TZ: Asia/Shanghai
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_0900_ai_ci
@@ -36,11 +41,17 @@ services:
       ZHIPU_CHAT_MODEL: glm-4.7-flash
       ZHIPU_VISION_MODEL: glm-4.6v-flash
       SESSION_TTL_DAYS: 30
+      LEGAL_VERSION: ${LEGAL_VERSION}
       ALLOW_DEV_LOGIN: "false"
       SEED_DEMO_DATA: "false"
       ALLOWED_ORIGINS: https://${API_DOMAIN}
       ALLOWED_HOSTS: ${API_DOMAIN},api,localhost,127.0.0.1
       TZ: Asia/Shanghai
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
     depends_on:
       mysql:
         condition: service_healthy
@@ -63,6 +74,11 @@ services:
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       TZ: Asia/Shanghai
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
     networks: [backend]
 
   caddy:
@@ -82,6 +98,11 @@ services:
       api:
         condition: service_healthy
     networks: [backend]
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
 
 networks:
   backend:

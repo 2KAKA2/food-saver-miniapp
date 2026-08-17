@@ -25,11 +25,14 @@ def create_app(seed_demo: bool | None = None) -> FastAPI:
                 seed_demo_data(db)
         yield
 
+    production = settings.environment == "production"
     application = FastAPI(
         title=settings.app_name,
         description="家庭食材库存、临期提醒与 AI 菜谱生成接口",
         version="0.1.0",
-        docs_url="/docs",
+        docs_url=None if production else "/docs",
+        redoc_url=None if production else "/redoc",
+        openapi_url=None if production else "/openapi.json",
         lifespan=lifespan,
     )
     application.add_middleware(

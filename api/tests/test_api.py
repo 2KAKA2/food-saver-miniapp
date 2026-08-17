@@ -4,7 +4,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 
 from app.api.v1.endpoints.recipes import _normalize_result
-from app.models.entities import InventoryBatch, StockChange
+from app.models.entities import InventoryBatch, StockChange, User
 from app.schemas.api import RecipeGenerateRequest
 from app.services import ai
 from app.services.inventory import calculate_status
@@ -12,7 +12,8 @@ from app.services.rate_limit import RateLimiter, limiter
 from fastapi import HTTPException
 from redis.exceptions import RedisError
 import pytest
-from app.core.config import Settings
+from app.core.config import Settings, settings
+from app.main import create_app
 
 
 def inventory_payload(name="西红柿", quantity="3", days=1):
@@ -71,6 +72,39 @@ def test_production_configuration_fails_closed():
         allowed_hosts="api.example.com",
     )
     secure.validate_for_startup()
+
+
+def test_production_hides_interactive_api_documentation(monkeypatch):
+    monkeypatch.setattr(settings, "environment", "production")
+    application = create_app(seed_demo=False)
+    assert application.docs_url is None
+    assert application.redoc_url is None
+    assert application.openapi_url is None
+
+
+def test_login_records_current_legal_acceptance(client, db_session):
+    user = db_session.scalar(select(User).where(User.openid == "dev:default-test-user"))
+    assert user.legal_version == "2026-08-17"
+    assert user.legal_accepted_at is not None
+
+    stale = client.post(
+        "/api/v1/auth/dev",
+        json={
+            "openid": "stale-legal-user",
+            "nickname": "旧协议用户",
+            "dev_key": "test-dev-key",
+            "legal_version": "2026-01-01",
+        },
+    )
+    assert stale.status_code == 409
+    assert "重新阅读" in stale.json()["detail"]
+
+
+def test_policy_update_revokes_existing_session(client, monkeypatch):
+    monkeypatch.setattr(settings, "legal_version", "2026-08-18")
+    response = client.get("/api/v1/auth/me")
+    assert response.status_code == 401
+    assert "重新阅读" in response.json()["detail"]
 
 
 def test_health_checks_report_dependency_status(client):
@@ -317,11 +351,11 @@ def test_household_invite_and_cross_household_isolation(client):
     ).status_code == 401
     owner_login = client.post(
         "/api/v1/auth/dev",
-        json={"openid": "owner", "nickname": "家庭所有者", "dev_key": "test-dev-key"},
+        json={"openid": "owner", "nickname": "家庭所有者", "dev_key": "test-dev-key", "legal_version": "2026-08-17"},
     ).json()
     member_login = client.post(
         "/api/v1/auth/dev",
-        json={"openid": "member", "nickname": "家庭成员", "dev_key": "test-dev-key"},
+        json={"openid": "member", "nickname": "家庭成员", "dev_key": "test-dev-key", "legal_version": "2026-08-17"},
     ).json()
     owner_household = owner_login["households"][0]["id"]
     member_household = member_login["households"][0]["id"]
@@ -374,11 +408,11 @@ def test_household_invite_and_cross_household_isolation(client):
 def test_household_invite_revoke_transfer_and_leave(client):
     owner = client.post(
         "/api/v1/auth/dev",
-        json={"openid": "lifecycle-owner", "nickname": "原所有者", "dev_key": "test-dev-key"},
+        json={"openid": "lifecycle-owner", "nickname": "原所有者", "dev_key": "test-dev-key", "legal_version": "2026-08-17"},
     ).json()
     member = client.post(
         "/api/v1/auth/dev",
-        json={"openid": "lifecycle-member", "nickname": "新所有者", "dev_key": "test-dev-key"},
+        json={"openid": "lifecycle-member", "nickname": "新所有者", "dev_key": "test-dev-key", "legal_version": "2026-08-17"},
     ).json()
     household_id = owner["households"][0]["id"]
     owner_headers = {
@@ -448,7 +482,7 @@ def test_household_invite_revoke_transfer_and_leave(client):
 def test_logout_revokes_session(client):
     login = client.post(
         "/api/v1/auth/dev",
-        json={"openid": "logout-user", "nickname": "退出用户", "dev_key": "test-dev-key"},
+        json={"openid": "logout-user", "nickname": "退出用户", "dev_key": "test-dev-key", "legal_version": "2026-08-17"},
     ).json()
     headers = {"Authorization": f"Bearer {login['access_token']}"}
     assert client.get("/api/v1/auth/me", headers=headers).status_code == 200
@@ -459,7 +493,7 @@ def test_logout_revokes_session(client):
 def test_account_deletion_erases_private_household(client, db_session):
     login = client.post(
         "/api/v1/auth/dev",
-        json={"openid": "delete-user", "nickname": "待注销用户", "dev_key": "test-dev-key"},
+        json={"openid": "delete-user", "nickname": "待注销用户", "dev_key": "test-dev-key", "legal_version": "2026-08-17"},
     ).json()
     household_id = login["households"][0]["id"]
     headers = {
@@ -486,11 +520,11 @@ def test_account_deletion_erases_private_household(client, db_session):
 def test_account_deletion_requires_owner_transfer(client):
     owner = client.post(
         "/api/v1/auth/dev",
-        json={"openid": "delete-owner", "nickname": "所有者", "dev_key": "test-dev-key"},
+        json={"openid": "delete-owner", "nickname": "所有者", "dev_key": "test-dev-key", "legal_version": "2026-08-17"},
     ).json()
     member = client.post(
         "/api/v1/auth/dev",
-        json={"openid": "delete-member", "nickname": "成员", "dev_key": "test-dev-key"},
+        json={"openid": "delete-member", "nickname": "成员", "dev_key": "test-dev-key", "legal_version": "2026-08-17"},
     ).json()
     household_id = owner["households"][0]["id"]
     owner_headers = {
