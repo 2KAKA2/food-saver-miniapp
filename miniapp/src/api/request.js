@@ -1,3 +1,5 @@
+import { clearHouseholdCaches } from '../utils/householdCache'
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1'
 const TOKEN_KEY = 'food_saver_access_token'
 const HOUSEHOLD_KEY = 'food_saver_household_id'
@@ -15,6 +17,7 @@ function handleUnauthorized(path, statusCode) {
   if (statusCode !== 401 || path.startsWith('/auth/')) return
   uni.removeStorageSync(TOKEN_KEY)
   uni.removeStorageSync(HOUSEHOLD_KEY)
+  clearHouseholdCaches()
   const pages = getCurrentPages()
   const current = pages[pages.length - 1]?.route || ''
   if (current !== 'pages/login/index') {

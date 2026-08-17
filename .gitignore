@@ -8,6 +8,7 @@ api/data/*.sqlite3
 miniapp/node_modules/
 miniapp/dist/
 miniapp/.env.production
+miniapp/.env.local
 .idea/
 .vscode/
 .env.deploy

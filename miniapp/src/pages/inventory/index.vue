@@ -11,6 +11,8 @@
       </view>
     </scroll-view>
 
+    <OfflineSnapshot v-if="store.usingCache" :saved-at="store.cachedAt" />
+
     <view v-if="store.loading" class="empty">正在加载...</view>
     <ErrorState v-else-if="loadError" :message="loadError" @retry="load" />
     <view v-else-if="!store.items.length" class="card empty">没有符合条件的食材</view>
@@ -27,7 +29,7 @@
           <text class="quantity">{{ item.quantity }} <text class="unit">{{ item.unit }}</text></text>
           <text class="expiry">{{ expiryText(item) }}</text>
         </view>
-        <view class="card-actions">
+        <view class="card-actions" :class="{ disabled: store.usingCache }">
           <text @tap="openForm(item.id)">编辑</text>
           <text class="danger" @tap="remove(item)">删除</text>
         </view>
@@ -41,6 +43,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 import { api } from '../../api'
 import ErrorState from '../../components/ErrorState.vue'
+import OfflineSnapshot from '../../components/OfflineSnapshot.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 import { useInventoryStore } from '../../stores/inventory'
 
@@ -69,7 +72,13 @@ function changeFilter(value) {
   load()
 }
 
-const openForm = (id) => uni.navigateTo({ url: `/pages/inventory/form${id ? `?id=${id}` : ''}` })
+const openForm = (id) => {
+  if (store.usingCache) {
+    uni.showToast({ title: '连接电脑服务后才能操作', icon: 'none' })
+    return
+  }
+  uni.navigateTo({ url: `/pages/inventory/form${id ? `?id=${id}` : ''}` })
+}
 const expiryText = (item) => {
   if (!item.expiry_date) return '未设置到期日'
   if (item.status === 'expired') return `已过期 ${Math.abs(item.days_remaining)} 天`
@@ -78,6 +87,10 @@ const expiryText = (item) => {
 }
 
 function remove(item) {
+  if (store.usingCache) {
+    uni.showToast({ title: '连接电脑服务后才能删除', icon: 'none' })
+    return
+  }
   uni.showModal({
     title: '删除食材',
     content: `确定删除“${item.name}”这一批库存吗？`,
@@ -114,5 +127,6 @@ onShow(load)
 .unit { font-size: 24rpx; font-weight: 400; }
 .expiry { color: #7d877f; font-size: 24rpx; }
 .card-actions { justify-content: flex-end; gap: 38rpx; margin-top: 28rpx; padding-top: 20rpx; border-top: 1rpx solid #edf0ed; color: #2f7d4a; font-size: 25rpx; }
+.card-actions.disabled { opacity: .45; }
 .danger { color: #c34249; }
 </style>

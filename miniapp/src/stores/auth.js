@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { api } from '../api'
 import { LEGAL_VERSION } from '../config/legal'
+import { clearHouseholdCaches } from '../utils/householdCache'
 
 export const TOKEN_KEY = 'food_saver_access_token'
 export const HOUSEHOLD_KEY = 'food_saver_household_id'
@@ -88,6 +89,7 @@ export const useAuthStore = defineStore('auth', () => {
     currentHouseholdId.value = null
     uni.removeStorageSync(TOKEN_KEY)
     uni.removeStorageSync(HOUSEHOLD_KEY)
+    clearHouseholdCaches()
   }
 
   async function logout() {

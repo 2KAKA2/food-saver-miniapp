@@ -19,6 +19,7 @@
 - 服务端记录用户同意的协议版本和时间，前后端版本不一致时拒绝登录
 - 生产环境关闭交互式接口文档，容器日志与数据库备份自动轮转
 - H5 与微信小程序双端构建
+- 本地电脑断连时按家庭显示最近一次库存只读快照
 
 ## 项目结构
 
@@ -74,7 +75,7 @@ ALLOW_DEV_LOGIN=false
 SEED_DEMO_DATA=false
 ```
 
-同时将 `miniapp/src/manifest.json` 中 `mp-weixin.appid` 替换为同一个 AppID，并在正式构建使用的环境文件中设置：
+项目已经写入确认的微信小程序 AppID `wx30ddd1061d78b551`。在正式构建使用的环境文件中设置：
 
 ```text
 VITE_AUTH_MODE=wechat
@@ -110,15 +111,17 @@ npm run build:mp-weixin
 miniapp/dist/build/mp-weixin
 ```
 
-当前代码仍使用测试 AppID，但正式域名校验已开启。使用本地真机调试时可在微信开发者工具中临时关闭域名校验：
+当前代码已使用真实 AppID，且正式域名校验已开启。使用本地真机调试时可在微信开发者工具中临时关闭域名校验：
 
 1. 确保手机和电脑连接同一局域网。
 2. 查询电脑局域网 IPv4 地址。
-3. 将 `miniapp/.env` 中的地址改为 `http://电脑局域网IP:8000/api/v1`。
+3. 执行 `.\scripts\prepare_local_wechat.ps1 -LanIp 电脑局域网IP`，生成不会提交到 Git 的 `miniapp/.env.local`。
 4. 重新执行 `npm run build:mp-weixin`。
 5. 确保 Windows 防火墙允许后端的 8000 端口访问；不要把关闭域名校验的设置用于正式体验版。
 
-正式上线时仍需配置真实微信 AppID、HTTPS 服务器和微信小程序合法域名。
+正式上线时仍需在服务器私密环境中配置同一 AppID 与 AppSecret，并准备 HTTPS 服务器和微信小程序合法域名。
+
+完整的本地真机联调步骤见 `docs/LOCAL_WECHAT_SETUP.md`。参考 EverShelf 后采用与暂缓的能力见 `docs/REFERENCE_PROJECTS.md`。
 
 ## 家庭共享与权限
 

@@ -23,7 +23,9 @@
       </view>
     </view>
 
-    <view class="actions">
+    <OfflineSnapshot v-if="usingCache" :saved-at="cachedAt" />
+
+    <view class="actions" :class="{ disabled: usingCache }">
       <view class="action" @tap="openForm">
         <text class="action-icon">＋</text>
         <text>录入食材</text>
@@ -74,11 +76,15 @@ import { onShow } from '@dcloudio/uni-app'
 import { reactive, ref } from 'vue'
 import { api } from '../../api'
 import ErrorState from '../../components/ErrorState.vue'
+import OfflineSnapshot from '../../components/OfflineSnapshot.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
+import { readHouseholdCache, writeHouseholdCache } from '../../utils/householdCache'
 
 const loading = ref(false)
 const loadError = ref('')
-const dashboard = reactive({
+const usingCache = ref(false)
+const cachedAt = ref('')
+const emptyDashboard = () => ({
   inventory_count: 0,
   normal_count: 0,
   expiring_count: 0,
@@ -86,6 +92,7 @@ const dashboard = reactive({
   expired_count: 0,
   expiring_items: [],
 })
+const dashboard = reactive(emptyDashboard())
 
 const emojis = { 蔬菜: '🥬', 水果: '🍎', 蛋奶: '🥚', 肉类: '🥩', 主食: '🍚', 调料: '🧂' }
 const categoryEmoji = (category) => emojis[category] || '🥣'
@@ -93,17 +100,34 @@ const categoryEmoji = (category) => emojis[category] || '🥣'
 async function loadDashboard() {
   loading.value = true
   loadError.value = ''
+  usingCache.value = false
+  cachedAt.value = ''
   try {
-    Object.assign(dashboard, await api.dashboard())
+    const result = await api.dashboard()
+    Object.assign(dashboard, result)
+    writeHouseholdCache('dashboard', result)
   } catch (error) {
-    loadError.value = error.message
+    const cached = readHouseholdCache('dashboard')
+    if (cached?.data) {
+      Object.assign(dashboard, cached.data)
+      usingCache.value = true
+      cachedAt.value = cached.savedAt
+    } else {
+      Object.assign(dashboard, emptyDashboard())
+      loadError.value = error.message
+    }
   } finally {
     loading.value = false
   }
 }
 
-const openForm = () => uni.navigateTo({ url: '/pages/inventory/form' })
-const openRecipe = () => uni.switchTab({ url: '/pages/recipe/generate' })
+function requireOnline(action) {
+  if (!usingCache.value) return action()
+  uni.showToast({ title: '连接电脑服务后才能操作', icon: 'none' })
+}
+
+const openForm = () => requireOnline(() => uni.navigateTo({ url: '/pages/inventory/form' }))
+const openRecipe = () => requireOnline(() => uni.switchTab({ url: '/pages/recipe/generate' }))
 const openInventory = () => uni.switchTab({ url: '/pages/inventory/index' })
 const openProfile = () => uni.switchTab({ url: '/pages/profile/index' })
 
@@ -124,6 +148,7 @@ onShow(loadDashboard)
 .stat-number { font-size: 42rpx; font-weight: 700; }
 .stat-label { margin-top: 6rpx; font-size: 22rpx; }
 .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 20rpx; margin-top: 24rpx; }
+.actions.disabled { opacity: .55; }
 .action { display: flex; align-items: center; gap: 18rpx; padding: 26rpx 30rpx; border-radius: 22rpx; background: #fff; font-size: 28rpx; font-weight: 600; }
 .action-icon { display: grid; place-items: center; width: 52rpx; height: 52rpx; border-radius: 16rpx; background: #e7f5eb; color: #2f7d4a; font-size: 34rpx; }
 .onboarding { margin-top: 24rpx; background: #fffaf0; }
