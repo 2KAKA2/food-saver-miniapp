@@ -19,7 +19,9 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: api/requirements.txt
-      - run: python -m pip install -r requirements.txt
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pip check
+      - run: python -m pip_audit -r requirements.txt
       - run: python -m pytest -q
       - run: python -m alembic upgrade head
       - run: python -m alembic check
@@ -36,7 +38,11 @@ jobs:
           node-version: "20"
           cache: npm
           cache-dependency-path: miniapp/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - run: npm ci
+      - run: python ../scripts/check_npm_audit.py --cwd .
       - run: npm run build:h5
       - run: npm run build:mp-weixin
 
@@ -55,3 +61,5 @@ jobs:
           --template
       - name: Validate Compose configuration
         run: docker compose --env-file .env.deploy.example config --quiet
+      - name: Validate deployment scripts
+        run: bash -n deploy/backup.sh deploy/restore.sh

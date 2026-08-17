@@ -33,16 +33,20 @@ docker compose --env-file .env.deploy ps
 
 ## 数据备份
 
-每天至少备份一次，并将备份文件同步到另一存储位置：
+每天至少备份一次，并将备份文件及校验文件同步到另一存储位置：
 
 ```bash
-mkdir -p backups
-docker compose --env-file .env.deploy exec -T mysql \
-  sh -c 'exec mysqldump -u root -p"$MYSQL_ROOT_PASSWORD" --single-transaction --routines --triggers "$MYSQL_DATABASE"' \
-  | gzip > "backups/food_saver_$(date +%Y%m%d_%H%M%S).sql.gz"
+chmod +x deploy/backup.sh deploy/restore.sh
+deploy/backup.sh .env.deploy
 ```
 
-每月至少在临时数据库执行一次恢复演练。不要只检查备份文件是否存在。
+恢复会先自动创建一个恢复前备份，并要求备份文件位于 `backups/` 且通过 SHA-256 校验：
+
+```bash
+deploy/restore.sh backups/food_saver_时间.sql.gz --confirm-restore .env.deploy
+```
+
+建议通过系统定时任务每天运行 `deploy/backup.sh`。每月至少在临时数据库执行一次恢复演练，不要只检查备份文件是否存在。
 
 ## 日常检查
 
@@ -52,3 +56,5 @@ docker compose --env-file .env.deploy logs --tail=200 api
 docker compose --env-file .env.deploy logs --tail=200 caddy
 curl -fsS https://你的API域名/health/ready
 ```
+
+就绪检查同时验证数据库与 Redis。生产环境中任一依赖不可用都会返回 503，容器健康检查会据此阻止流量进入异常实例。依赖漏洞由 GitHub Dependabot 和持续集成审计跟踪。

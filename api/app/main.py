@@ -12,6 +12,7 @@ from app.api.v1.router import api_router
 from app.core.config import settings
 from app.db.session import SessionLocal
 from app.seed import seed_demo_data
+from app.services.rate_limit import limiter
 
 
 def create_app(seed_demo: bool | None = None) -> FastAPI:
@@ -49,7 +50,18 @@ def create_app(seed_demo: bool | None = None) -> FastAPI:
         if not request_id or len(request_id) > 80:
             request_id = uuid.uuid4().hex
         started = time.perf_counter()
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception:
+            duration_ms = round((time.perf_counter() - started) * 1000, 2)
+            access_logger.exception(
+                "request_failed method=%s path=%s duration_ms=%s request_id=%s",
+                request.method,
+                request.url.path,
+                duration_ms,
+                request_id,
+            )
+            raise
         duration_ms = round((time.perf_counter() - started) * 1000, 2)
         response.headers["X-Request-ID"] = request_id
         access_logger.info(
@@ -72,12 +84,17 @@ def create_app(seed_demo: bool | None = None) -> FastAPI:
 
     @application.get("/health/ready", include_in_schema=False)
     def readiness():
+        checks = {"database": "ok"}
         try:
             with SessionLocal() as db:
                 db.execute(text("SELECT 1"))
         except Exception as exc:
             raise HTTPException(status_code=503, detail="数据库暂不可用") from exc
-        return {"status": "ready"}
+        redis_ready, redis_status = limiter.health_status()
+        checks["redis"] = redis_status
+        if not redis_ready:
+            raise HTTPException(status_code=503, detail="缓存与请求保护服务暂不可用")
+        return {"status": "ready", "checks": checks}
 
     return application
 

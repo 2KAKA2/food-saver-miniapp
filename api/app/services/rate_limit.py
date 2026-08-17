@@ -63,6 +63,15 @@ class RateLimiter:
                 headers={"Retry-After": str(retry_after)},
             )
 
+    def health_status(self) -> tuple[bool, str]:
+        if self._redis is None:
+            return settings.environment != "production", "disabled"
+        try:
+            available = bool(self._redis.ping())
+        except RedisError:
+            return False, "unavailable"
+        return available, "ok" if available else "unavailable"
+
 
 limiter = RateLimiter()
 
@@ -79,4 +88,3 @@ def ai_rate_limit(request: Request) -> None:
     authorization = request.headers.get("Authorization", "")
     identifier = authorization or _client_identifier(request)
     limiter.enforce("ai", identifier, settings.ai_rate_limit)
-

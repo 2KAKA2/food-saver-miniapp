@@ -5,8 +5,9 @@ from sqlalchemy import func, select
 
 from app.models.entities import InventoryBatch, StockChange
 from app.services.inventory import calculate_status
-from app.services.rate_limit import RateLimiter
+from app.services.rate_limit import RateLimiter, limiter
 from fastapi import HTTPException
+from redis.exceptions import RedisError
 import pytest
 from app.core.config import Settings
 
@@ -67,6 +68,27 @@ def test_production_configuration_fails_closed():
         allowed_hosts="api.example.com",
     )
     secure.validate_for_startup()
+
+
+def test_health_checks_report_dependency_status(client):
+    assert client.get("/health/live").json() == {"status": "ok"}
+    ready = client.get("/health/ready")
+    assert ready.status_code == 200
+    assert ready.json() == {
+        "status": "ready",
+        "checks": {"database": "ok", "redis": "disabled"},
+    }
+
+
+def test_readiness_fails_when_redis_is_unavailable(client, monkeypatch):
+    class FailedRedis:
+        def ping(self):
+            raise RedisError("test outage")
+
+    monkeypatch.setattr(limiter, "_redis", FailedRedis())
+    response = client.get("/health/ready")
+    assert response.status_code == 503
+    assert response.json()["detail"] == "缓存与请求保护服务暂不可用"
 
 
 def test_inventory_crud_and_dashboard(client):

@@ -129,8 +129,10 @@ miniapp/dist/build/mp-weixin
 
 ```powershell
 cd api
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe -m alembic check
+.\.venv\Scripts\python.exe -m pip_audit -r requirements.txt
 ```
 
 前端构建：
@@ -139,6 +141,7 @@ cd api
 cd miniapp
 npm run build:h5
 npm run build:mp-weixin
+..\api\.venv\Scripts\python.exe ..\scripts\check_npm_audit.py --cwd .
 ```
 
 仓库包含 GitHub Actions 自动检查，会在推送和合并请求时执行后端测试、数据库迁移校验、H5/微信小程序构建和部署模板检查。
