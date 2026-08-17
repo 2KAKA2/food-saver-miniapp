@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from app.schemas.api import RecognitionOut
 from app.services.ai import recognize_ingredients
 from app.services.auth import HouseholdContext, get_household_context
+from app.services.rate_limit import ai_rate_limit
 
 
 router = APIRouter()
@@ -10,7 +11,11 @@ ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
 
 
-@router.post("/recognize-ingredients", response_model=RecognitionOut)
+@router.post(
+    "/recognize-ingredients",
+    response_model=RecognitionOut,
+    dependencies=[Depends(ai_rate_limit)],
+)
 async def recognize(
     file: UploadFile = File(...),
     context: HouseholdContext = Depends(get_household_context),

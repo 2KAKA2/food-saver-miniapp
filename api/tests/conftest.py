@@ -4,6 +4,9 @@ os.environ["ZHIPU_API_KEY"] = ""
 os.environ["SEED_DEMO_DATA"] = "false"
 os.environ["ALLOW_DEV_LOGIN"] = "true"
 os.environ["DEV_LOGIN_SECRET"] = "test-dev-key"
+os.environ["ALLOWED_HOSTS"] = "testserver,localhost"
+os.environ["LOGIN_RATE_LIMIT"] = "1000"
+os.environ["AI_RATE_LIMIT"] = "1000"
 
 import pytest
 from fastapi.testclient import TestClient

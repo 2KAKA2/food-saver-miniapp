@@ -44,3 +44,6 @@ class ProfileUpdate(BaseModel):
     nickname: str = Field(min_length=1, max_length=80)
     avatar_url: HttpUrl | None = None
 
+
+class AccountDeleteRequest(BaseModel):
+    confirmation: str = Field(min_length=1, max_length=20)

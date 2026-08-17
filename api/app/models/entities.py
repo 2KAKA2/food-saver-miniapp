@@ -100,6 +100,8 @@ class Recipe(Base):
     steps_json: Mapped[str] = mapped_column(Text, default="[]")
     source: Mapped[str] = mapped_column(String(20), default="fallback")
     status: Mapped[str] = mapped_column(String(20), default="planned")
+    cook_idempotency_key_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    cook_result_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     cooked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 

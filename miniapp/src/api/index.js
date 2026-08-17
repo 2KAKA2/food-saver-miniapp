@@ -6,6 +6,7 @@ export const api = {
   me: () => request('/auth/me'),
   updateProfile: (data) => request('/auth/profile', { method: 'PUT', data }),
   logout: () => request('/auth/logout', { method: 'POST' }),
+  deleteAccount: (data) => request('/auth/account', { method: 'DELETE', data }),
   households: () => request('/households'),
   currentHousehold: () => request('/households/current'),
   createHousehold: (data) => request('/households', { method: 'POST', data }),
@@ -30,5 +31,9 @@ export const api = {
   generateRecipe: (data) => request('/recipes/generate', { method: 'POST', data, timeout: 90000 }),
   recipes: () => request('/recipes'),
   recipe: (id) => request(`/recipes/${id}`),
-  cookRecipe: (id, data) => request(`/recipes/${id}/cook`, { method: 'POST', data }),
+  cookRecipe: (id, data, idempotencyKey) => request(`/recipes/${id}/cook`, {
+    method: 'POST',
+    data,
+    header: { 'Idempotency-Key': idempotencyKey },
+  }),
 }

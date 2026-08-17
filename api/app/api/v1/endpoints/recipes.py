@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -20,6 +20,8 @@ from app.schemas.api import (
 from app.services.ai import generate_recipe
 from app.services.auth import HouseholdContext, get_household_context
 from app.services.inventory import calculate_status, inventory_sort_key, serialize_inventory
+from app.services.rate_limit import ai_rate_limit
+from app.services.auth import sha256_token
 
 
 router = APIRouter()
@@ -80,7 +82,12 @@ def _normalize_result(result: dict, valid_batches: dict[int, InventoryBatch], pa
     }
 
 
-@router.post("/generate", response_model=RecipeOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/generate",
+    response_model=RecipeOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(ai_rate_limit)],
+)
 def create_recipe(
     payload: RecipeGenerateRequest,
     context: HouseholdContext = Depends(get_household_context),
@@ -154,13 +161,21 @@ def recipe_detail(
 def cook_recipe(
     recipe_id: int,
     payload: CookRequest,
+    idempotency_key: str = Header(alias="Idempotency-Key", min_length=8, max_length=200),
     context: HouseholdContext = Depends(get_household_context),
     db: Session = Depends(get_db),
 ):
-    recipe = db.get(Recipe, recipe_id)
-    if not recipe or recipe.household_id != context.household.id:
+    recipe = db.scalar(
+        select(Recipe)
+        .where(Recipe.id == recipe_id, Recipe.household_id == context.household.id)
+        .with_for_update()
+    )
+    if not recipe:
         raise HTTPException(status_code=404, detail="菜谱不存在")
+    key_hash = sha256_token(idempotency_key.strip())
     if recipe.status == "cooked":
+        if recipe.cook_idempotency_key_hash == key_hash and recipe.cook_result_json:
+            return CookOut.model_validate(json.loads(recipe.cook_result_json))
         raise HTTPException(status_code=409, detail="该菜谱已经确认制作")
 
     merged: dict[int, Decimal] = {}
@@ -205,11 +220,14 @@ def cook_recipe(
         updated.append(batch)
     recipe.status = "cooked"
     recipe.cooked_at = datetime.now()
-    db.commit()
+    recipe.cook_idempotency_key_hash = key_hash
+    db.flush()
     for batch in updated:
         db.refresh(batch)
-    db.refresh(recipe)
-    return CookOut(
+    result = CookOut(
         recipe=serialize_recipe(recipe),
         updated_inventory=[serialize_inventory(item) for item in updated],
     )
+    recipe.cook_result_json = json.dumps(result.model_dump(mode="json"), ensure_ascii=False)
+    db.commit()
+    return result

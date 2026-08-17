@@ -13,6 +13,9 @@
 - 未配置 AI 或调用失败时自动返回可演示的降级结果
 - 菜谱历史、详情和实际用量确认
 - 制作菜谱后事务化扣减库存并保存变更记录
+- 确认制作接口支持幂等重试，避免重复扣减库存
+- Redis 分布式限流保护微信登录与 AI 接口
+- 账号注销、个人资料匿名化、用户协议和隐私政策页面
 - H5 与微信小程序双端构建
 
 ## 项目结构
@@ -137,6 +140,12 @@ cd miniapp
 npm run build:h5
 npm run build:mp-weixin
 ```
+
+## 生产部署
+
+生产部署基线位于 `deploy/`，使用 Caddy 自动 HTTPS、FastAPI、MySQL 8.4 LTS 和 Redis。执行前需要准备备案域名、云服务器、微信 AppSecret 和 AI API Key，具体步骤见 `deploy/README.md`。
+
+生产环境会进行启动安全校验：使用 SQLite、缺少 Redis/微信/AI 配置、开启开发登录或演示数据时，API 会拒绝启动。`/health/live` 用于进程存活检查，`/health/ready` 用于数据库就绪检查。
 
 ## 推荐演示流程
 

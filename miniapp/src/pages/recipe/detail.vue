@@ -74,6 +74,16 @@ async function load() {
   }
 }
 
+function cookIdempotencyKey() {
+  const storageKey = `food_saver_cook_key_${recipeId.value}`
+  let value = uni.getStorageSync(storageKey)
+  if (!value) {
+    value = `${Date.now()}-${Math.random().toString(36).slice(2)}-${recipeId.value}`
+    uni.setStorageSync(storageKey, value)
+  }
+  return { storageKey, value }
+}
+
 function cook() {
   const items = Object.entries(consumptions)
     .filter(([, quantity]) => Number(quantity) > 0)
@@ -89,8 +99,10 @@ function cook() {
       if (!confirm) return
       cooking.value = true
       try {
-        const result = await api.cookRecipe(recipeId.value, { consumptions: items })
+        const idempotency = cookIdempotencyKey()
+        const result = await api.cookRecipe(recipeId.value, { consumptions: items }, idempotency.value)
         recipe.value = result.recipe
+        uni.removeStorageSync(idempotency.storageKey)
         uni.showToast({ title: '库存已更新' })
       } catch (error) {
         uni.showToast({ title: error.message, icon: 'none', duration: 2500 })
@@ -131,4 +143,3 @@ onLoad((options) => {
 .cook-button { margin-top: 28rpx; }
 .cooked-tip { margin-top: 28rpx; padding: 26rpx; border-radius: 20rpx; background: #e7f5eb; color: #2f7d4a; text-align: center; font-weight: 600; }
 </style>
-

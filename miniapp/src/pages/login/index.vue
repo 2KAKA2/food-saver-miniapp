@@ -13,10 +13,13 @@
     </view>
 
     <view class="login-area">
-      <label class="agreement" @tap="agreed = !agreed">
-        <checkbox :checked="agreed" color="#2f7d4a" />
-        <text>我已阅读并同意《用户协议》和《隐私政策》</text>
-      </label>
+      <view class="agreement">
+        <checkbox :checked="agreed" color="#2f7d4a" @tap="agreed = !agreed" />
+        <text @tap="agreed = !agreed">我已阅读并同意</text>
+        <text class="legal-link" @tap="openLegal('agreement')">《用户协议》</text>
+        <text>和</text>
+        <text class="legal-link" @tap="openLegal('privacy')">《隐私政策》</text>
+      </view>
       <button class="primary-button" :loading="loading" @tap="startLogin">
         {{ authMode === 'dev' ? '进入本地体验' : '微信快捷登录' }}
       </button>
@@ -34,6 +37,7 @@ const auth = useAuthStore()
 const loading = ref(false)
 const agreed = ref(false)
 const authMode = AUTH_MODE
+const openLegal = (type) => uni.navigateTo({ url: `/pages/legal/${type}` })
 
 async function startLogin() {
   if (!agreed.value) {
@@ -86,6 +90,6 @@ onLoad(async () => {
 .login-area { margin-top: 100rpx; }
 .agreement { display: flex; align-items: center; justify-content: center; gap: 8rpx; margin-bottom: 28rpx; color: #7c8780; font-size: 22rpx; }
 .agreement checkbox { transform: scale(.75); }
+.legal-link { color: #2f7d4a; }
 .dev-tip { display: block; margin-top: 22rpx; text-align: center; color: #9aa29d; font-size: 21rpx; }
 </style>
-

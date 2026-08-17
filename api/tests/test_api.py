@@ -5,6 +5,10 @@ from sqlalchemy import func, select
 
 from app.models.entities import InventoryBatch, StockChange
 from app.services.inventory import calculate_status
+from app.services.rate_limit import RateLimiter
+from fastapi import HTTPException
+import pytest
+from app.core.config import Settings
 
 
 def inventory_payload(name="西红柿", quantity="3", days=1):
@@ -28,6 +32,41 @@ def test_status_boundaries():
     assert calculate_status(today, today) == ("today", 0)
     assert calculate_status(today + timedelta(days=3), today) == ("expiring", 3)
     assert calculate_status(today + timedelta(days=4), today) == ("normal", 4)
+
+
+def test_memory_rate_limiter_rejects_excess_requests():
+    limiter = RateLimiter()
+    limiter.enforce("unit-test", "unique-rate-user", limit=2, window_seconds=60)
+    limiter.enforce("unit-test", "unique-rate-user", limit=2, window_seconds=60)
+    try:
+        limiter.enforce("unit-test", "unique-rate-user", limit=2, window_seconds=60)
+        assert False, "第三次请求应被限流"
+    except HTTPException as exc:
+        assert exc.status_code == 429
+        assert "Retry-After" in exc.headers
+
+
+def test_production_configuration_fails_closed():
+    insecure = Settings(_env_file=None, environment="production", database_url="sqlite:///unsafe.db")
+    with pytest.raises(RuntimeError) as exc:
+        insecure.validate_for_startup()
+    assert "SQLite" in str(exc.value)
+    assert "微信" in str(exc.value)
+    assert "Redis" in str(exc.value)
+
+    secure = Settings(
+        _env_file=None,
+        environment="production",
+        database_url="mysql+pymysql://user:pass@mysql/db",
+        redis_url="redis://:pass@redis:6379/0",
+        wechat_app_id="wx-test",
+        wechat_app_secret="server-only-secret",
+        zhipu_api_key="ai-secret",
+        allow_dev_login=False,
+        seed_demo_data=False,
+        allowed_hosts="api.example.com",
+    )
+    secure.validate_for_startup()
 
 
 def test_inventory_crud_and_dashboard(client):
@@ -73,6 +112,7 @@ def test_fallback_recipe_and_atomic_cook(client, db_session):
     failed = client.post(
         f"/api/v1/recipes/{recipe['id']}/cook",
         json={"consumptions": [{"inventory_id": tomato["id"], "quantity": "2"}, {"inventory_id": egg["id"], "quantity": "99"}]},
+        headers={"Idempotency-Key": "cook-failed-001"},
     )
     assert failed.status_code == 409
     assert db_session.get(InventoryBatch, tomato["id"]).quantity == Decimal("3.00")
@@ -80,6 +120,7 @@ def test_fallback_recipe_and_atomic_cook(client, db_session):
     cooked = client.post(
         f"/api/v1/recipes/{recipe['id']}/cook",
         json={"consumptions": [{"inventory_id": tomato["id"], "quantity": "2"}, {"inventory_id": egg["id"], "quantity": "2"}]},
+        headers={"Idempotency-Key": "cook-success-001"},
     )
     assert cooked.status_code == 200
     assert cooked.json()["recipe"]["status"] == "cooked"
@@ -88,9 +129,17 @@ def test_fallback_recipe_and_atomic_cook(client, db_session):
         select(func.count()).select_from(StockChange).where(StockChange.change_type == "cook")
     )
     assert cook_logs == 2
+    repeated = client.post(
+        f"/api/v1/recipes/{recipe['id']}/cook",
+        json={"consumptions": [{"inventory_id": tomato["id"], "quantity": "2"}, {"inventory_id": egg["id"], "quantity": "2"}]},
+        headers={"Idempotency-Key": "cook-success-001"},
+    )
+    assert repeated.status_code == 200
+    assert db_session.get(InventoryBatch, tomato["id"]).quantity == Decimal("1.00")
     assert client.post(
         f"/api/v1/recipes/{recipe['id']}/cook",
         json={"consumptions": [{"inventory_id": tomato["id"], "quantity": "1"}]},
+        headers={"Idempotency-Key": "cook-different-002"},
     ).status_code == 409
 
 
@@ -175,3 +224,64 @@ def test_logout_revokes_session(client):
     assert client.get("/api/v1/auth/me", headers=headers).status_code == 200
     assert client.post("/api/v1/auth/logout", headers=headers).status_code == 204
     assert client.get("/api/v1/auth/me", headers=headers).status_code == 401
+
+
+def test_account_deletion_erases_private_household(client, db_session):
+    login = client.post(
+        "/api/v1/auth/dev",
+        json={"openid": "delete-user", "nickname": "待注销用户", "dev_key": "test-dev-key"},
+    ).json()
+    household_id = login["households"][0]["id"]
+    headers = {
+        "Authorization": f"Bearer {login['access_token']}",
+        "X-Household-Id": str(household_id),
+    }
+    assert client.post(
+        "/api/v1/inventory", json=inventory_payload("注销测试食材"), headers=headers
+    ).status_code == 201
+    assert client.request(
+        "DELETE",
+        "/api/v1/auth/account",
+        json={"confirmation": "注销账号"},
+        headers=headers,
+    ).status_code == 204
+    assert client.get("/api/v1/auth/me", headers=headers).status_code == 401
+    assert db_session.scalar(
+        select(func.count()).select_from(InventoryBatch).where(
+            InventoryBatch.household_id == household_id
+        )
+    ) == 0
+
+
+def test_account_deletion_requires_owner_transfer(client):
+    owner = client.post(
+        "/api/v1/auth/dev",
+        json={"openid": "delete-owner", "nickname": "所有者", "dev_key": "test-dev-key"},
+    ).json()
+    member = client.post(
+        "/api/v1/auth/dev",
+        json={"openid": "delete-member", "nickname": "成员", "dev_key": "test-dev-key"},
+    ).json()
+    household_id = owner["households"][0]["id"]
+    owner_headers = {
+        "Authorization": f"Bearer {owner['access_token']}",
+        "X-Household-Id": str(household_id),
+    }
+    invite = client.post(
+        "/api/v1/households/current/invites",
+        json={"expires_in_hours": 1, "max_uses": 1},
+        headers=owner_headers,
+    ).json()
+    client.post(
+        "/api/v1/households/join",
+        json={"invite_code": invite["invite_code"]},
+        headers={"Authorization": f"Bearer {member['access_token']}"},
+    )
+    response = client.request(
+        "DELETE",
+        "/api/v1/auth/account",
+        json={"confirmation": "注销账号"},
+        headers=owner_headers,
+    )
+    assert response.status_code == 409
+    assert "转让" in response.json()["detail"]

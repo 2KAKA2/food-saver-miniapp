@@ -25,6 +25,14 @@
       "style": { "navigationBarTitleText": "我的家庭" }
     },
     {
+      "path": "pages/legal/privacy",
+      "style": { "navigationBarTitleText": "隐私政策" }
+    },
+    {
+      "path": "pages/legal/agreement",
+      "style": { "navigationBarTitleText": "用户协议" }
+    },
+    {
       "path": "pages/inventory/form",
       "style": { "navigationBarTitleText": "录入食材" }
     },

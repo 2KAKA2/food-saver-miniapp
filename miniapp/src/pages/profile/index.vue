@@ -56,6 +56,12 @@
       </view>
     </view>
 
+    <view class="card section legal-list">
+      <view class="legal-row" @tap="openLegal('agreement')"><text>用户协议</text><text>›</text></view>
+      <view class="legal-row" @tap="openLegal('privacy')"><text>隐私政策</text><text>›</text></view>
+      <view class="legal-row danger-row" @tap="deleteAccount"><text>注销账号</text><text>›</text></view>
+    </view>
+
     <button class="logout-button" @tap="logout">退出登录</button>
   </view>
 </template>
@@ -169,6 +175,29 @@ function logout() {
   })
 }
 
+const openLegal = (type) => uni.navigateTo({ url: `/pages/legal/${type}` })
+
+function deleteAccount() {
+  uni.showModal({
+    title: '注销账号',
+    content: '注销后个人资料和个人家庭数据将被删除。若你管理多人家庭，需要先转让所有者。请输入“注销账号”确认：',
+    editable: true,
+    placeholderText: '注销账号',
+    confirmColor: '#c34249',
+    success: async ({ confirm, content }) => {
+      if (!confirm) return
+      try {
+        await api.deleteAccount({ confirmation: content })
+        auth.clearSession()
+        uni.showToast({ title: '账号已注销' })
+        setTimeout(() => uni.reLaunch({ url: '/pages/login/index' }), 600)
+      } catch (error) {
+        uni.showToast({ title: error.message, icon: 'none', duration: 3000 })
+      }
+    },
+  })
+}
+
 onShow(load)
 </script>
 
@@ -201,6 +230,8 @@ onShow(load)
 .input { flex: 1; height: 74rpx; padding: 0 20rpx; border-radius: 14rpx; background: #f3f6f3; font-size: 25rpx; }
 .small-button { width: 130rpx; height: 74rpx; line-height: 74rpx; padding: 0; border-radius: 14rpx; background: #2f7d4a; color: #fff; font-size: 25rpx; }
 .logout-button { margin-top: 34rpx; background: transparent; color: #bd4249; font-size: 27rpx; }
+.legal-row { display: flex; justify-content: space-between; padding: 22rpx 0; border-bottom: 1rpx solid #edf0ed; font-size: 26rpx; }
+.legal-row:last-child { border-bottom: none; }
+.danger-row { color: #bd4249; }
 .small { padding: 24rpx; }
 </style>
-

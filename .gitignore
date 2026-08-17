@@ -9,4 +9,6 @@ miniapp/node_modules/
 miniapp/dist/
 .idea/
 .vscode/
+.env.deploy
+backups/
 
