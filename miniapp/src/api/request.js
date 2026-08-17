@@ -67,7 +67,10 @@ export function uploadIngredientImage(filePath) {
           parsed = JSON.parse(data)
         } catch (_) {}
         if (statusCode >= 200 && statusCode < 300) resolve(parsed)
-        else reject(new Error(errorMessage(parsed, `识别失败（${statusCode}）`)))
+        else {
+          handleUnauthorized('/ai/recognize-ingredients', statusCode)
+          reject(new Error(errorMessage(parsed, `识别失败（${statusCode}）`)))
+        }
       },
       fail: (error) => reject(new Error(error.errMsg || '图片上传失败')),
     })

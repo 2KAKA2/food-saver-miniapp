@@ -40,6 +40,7 @@
     </view>
 
     <view v-if="loading" class="empty">正在加载...</view>
+    <ErrorState v-else-if="loadError" :message="loadError" @retry="loadDashboard" />
     <view v-else-if="!dashboard.expiring_items.length" class="card empty">暂无需要处理的食材</view>
     <view v-else class="food-list">
       <view v-for="item in dashboard.expiring_items" :key="item.id" class="food-row card">
@@ -61,9 +62,11 @@
 import { onShow } from '@dcloudio/uni-app'
 import { reactive, ref } from 'vue'
 import { api } from '../../api'
+import ErrorState from '../../components/ErrorState.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 
 const loading = ref(false)
+const loadError = ref('')
 const dashboard = reactive({
   inventory_count: 0,
   normal_count: 0,
@@ -78,10 +81,11 @@ const categoryEmoji = (category) => emojis[category] || '🥣'
 
 async function loadDashboard() {
   loading.value = true
+  loadError.value = ''
   try {
     Object.assign(dashboard, await api.dashboard())
   } catch (error) {
-    uni.showToast({ title: error.message, icon: 'none' })
+    loadError.value = error.message
   } finally {
     loading.value = false
   }
@@ -121,4 +125,3 @@ onShow(loadDashboard)
 .food-name { font-size: 30rpx; font-weight: 650; }
 .food-meta, .food-date { display: block; margin-top: 10rpx; font-size: 24rpx; color: #79837c; }
 </style>
-

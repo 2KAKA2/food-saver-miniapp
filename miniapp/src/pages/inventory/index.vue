@@ -12,6 +12,7 @@
     </scroll-view>
 
     <view v-if="store.loading" class="empty">正在加载...</view>
+    <ErrorState v-else-if="loadError" :message="loadError" @retry="load" />
     <view v-else-if="!store.items.length" class="card empty">没有符合条件的食材</view>
     <view v-else class="inventory-list">
       <view v-for="item in store.items" :key="item.id" class="inventory-card card">
@@ -39,12 +40,14 @@
 import { onShow } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 import { api } from '../../api'
+import ErrorState from '../../components/ErrorState.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 import { useInventoryStore } from '../../stores/inventory'
 
 const store = useInventoryStore()
 const keyword = ref('')
 const filter = ref('')
+const loadError = ref('')
 const tabs = [
   { label: '全部', value: '' },
   { label: '临期', value: 'expiring' },
@@ -53,10 +56,11 @@ const tabs = [
 ]
 
 async function load() {
+  loadError.value = ''
   try {
     await store.load({ status: filter.value, keyword: keyword.value })
   } catch (error) {
-    uni.showToast({ title: error.message, icon: 'none' })
+    loadError.value = error.message
   }
 }
 
@@ -112,4 +116,3 @@ onShow(load)
 .card-actions { justify-content: flex-end; gap: 38rpx; margin-top: 28rpx; padding-top: 20rpx; border-top: 1rpx solid #edf0ed; color: #2f7d4a; font-size: 25rpx; }
 .danger { color: #c34249; }
 </style>
-

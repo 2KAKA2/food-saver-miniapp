@@ -14,6 +14,7 @@
         <text class="select-all" @tap="toggleAll">{{ allSelected ? '取消全选' : '全选' }}</text>
       </view>
       <view v-if="loading" class="empty">正在加载...</view>
+      <ErrorState v-else-if="loadError" :message="loadError" @retry="loadInventory" />
       <view v-else-if="!inventory.length" class="empty">请先录入库存食材</view>
       <checkbox-group v-else @change="selectedIds = $event.detail.value.map(Number)">
         <label v-for="item in inventory" :key="item.id" class="food-option">
@@ -59,11 +60,13 @@
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { api } from '../../api'
+import ErrorState from '../../components/ErrorState.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 
 const inventory = ref([])
 const selectedIds = ref([])
 const loading = ref(false)
+const loadError = ref('')
 const generating = ref(false)
 const servings = ref(2)
 const flavor = ref('家常')
@@ -78,11 +81,12 @@ const allSelected = computed(() => inventory.value.length > 0 && selectedIds.val
 
 async function loadInventory() {
   loading.value = true
+  loadError.value = ''
   try {
     inventory.value = (await api.inventory()).filter((item) => item.status !== 'expired')
     selectedIds.value = inventory.value.map((item) => item.id)
   } catch (error) {
-    uni.showToast({ title: error.message, icon: 'none' })
+    loadError.value = error.message
   } finally {
     loading.value = false
   }
@@ -137,4 +141,3 @@ onShow(loadInventory)
 .picker-value { color: #2f7d4a; }
 .generate { margin-top: 28rpx; }
 </style>
-

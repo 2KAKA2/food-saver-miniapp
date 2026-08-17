@@ -147,11 +147,25 @@ def test_image_fallback_does_not_write_inventory(client):
     before = len(client.get("/api/v1/inventory").json())
     response = client.post(
         "/api/v1/ai/recognize-ingredients",
-        files={"file": ("food.png", b"not-a-real-image", "image/png")},
+        files={"file": ("food.png", b"\x89PNG\r\n\x1a\nminimal", "image/png")},
     )
     assert response.status_code == 200
     assert response.json()["source"] == "fallback"
     assert len(client.get("/api/v1/inventory").json()) == before
+
+
+def test_image_upload_rejects_invalid_or_spoofed_content(client):
+    invalid = client.post(
+        "/api/v1/ai/recognize-ingredients",
+        files={"file": ("food.png", b"not-a-real-image", "image/png")},
+    )
+    assert invalid.status_code == 400
+
+    spoofed = client.post(
+        "/api/v1/ai/recognize-ingredients",
+        files={"file": ("food.jpg", b"\x89PNG\r\n\x1a\nminimal", "image/jpeg")},
+    )
+    assert spoofed.status_code == 415
 
 
 def test_household_invite_and_cross_household_isolation(client):

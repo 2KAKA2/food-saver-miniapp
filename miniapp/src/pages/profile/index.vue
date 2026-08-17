@@ -24,7 +24,8 @@
     <view class="card section">
       <text class="section-title">家庭成员</text>
       <view v-if="loading" class="empty small">正在加载...</view>
-      <view v-for="member in detail?.members || []" :key="member.user.id" class="member-row">
+      <ErrorState v-else-if="loadError" :message="loadError" @retry="load" />
+      <view v-for="member in loadError ? [] : (detail?.members || [])" :key="member.user.id" class="member-row">
         <view class="member-avatar">{{ member.user.nickname.slice(0, 1) }}</view>
         <view class="member-main">
           <text class="member-name">{{ member.user.nickname }}</text>
@@ -70,11 +71,13 @@
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { api } from '../../api'
+import ErrorState from '../../components/ErrorState.vue'
 import { useAuthStore } from '../../stores/auth'
 
 const auth = useAuthStore()
 const detail = ref(null)
 const loading = ref(false)
+const loadError = ref('')
 const inviteCode = ref('')
 const joinCode = ref('')
 const newHouseholdName = ref('')
@@ -85,11 +88,12 @@ const avatarText = computed(() => auth.user?.nickname?.slice(0, 1) || '家')
 
 async function load() {
   loading.value = true
+  loadError.value = ''
   try {
     await auth.refresh()
     detail.value = await api.currentHousehold()
   } catch (error) {
-    uni.showToast({ title: error.message, icon: 'none' })
+    loadError.value = error.message
   } finally {
     loading.value = false
   }

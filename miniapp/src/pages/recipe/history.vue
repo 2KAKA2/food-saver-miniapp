@@ -8,6 +8,7 @@
       </view>
     </view>
     <view v-if="loading" class="empty">正在加载...</view>
+    <ErrorState v-else-if="loadError" :message="loadError" @retry="load" />
     <view v-else-if="!recipes.length" class="card empty">还没有菜谱，去生成第一道吧</view>
     <view v-else class="recipe-list">
       <view v-for="recipe in recipes" :key="recipe.id" class="recipe-card card" @tap="openDetail(recipe.id)">
@@ -29,16 +30,19 @@
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { api } from '../../api'
+import ErrorState from '../../components/ErrorState.vue'
 
 const recipes = ref([])
 const loading = ref(false)
+const loadError = ref('')
 
 async function load() {
   loading.value = true
+  loadError.value = ''
   try {
     recipes.value = await api.recipes()
   } catch (error) {
-    uni.showToast({ title: error.message, icon: 'none' })
+    loadError.value = error.message
   } finally {
     loading.value = false
   }
@@ -66,4 +70,3 @@ onShow(load)
 .source { color: #2f7d4a; }
 .date { color: #929b95; }
 </style>
-

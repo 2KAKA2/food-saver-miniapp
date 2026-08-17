@@ -1,6 +1,7 @@
 <template>
   <view class="page">
     <view v-if="loading" class="empty">正在加载...</view>
+    <ErrorState v-else-if="loadError" :message="loadError" @retry="load" />
     <template v-else-if="recipe">
       <view class="hero card">
         <view class="hero-top">
@@ -53,22 +54,25 @@
 import { reactive, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { api } from '../../api'
+import ErrorState from '../../components/ErrorState.vue'
 
 const recipeId = ref(null)
 const recipe = ref(null)
 const loading = ref(false)
+const loadError = ref('')
 const cooking = ref(false)
 const consumptions = reactive({})
 
 async function load() {
   loading.value = true
+  loadError.value = ''
   try {
     recipe.value = await api.recipe(recipeId.value)
     recipe.value.ingredients.forEach((item) => {
       if (item.inventory_id) consumptions[item.inventory_id] = String(item.quantity)
     })
   } catch (error) {
-    uni.showToast({ title: error.message, icon: 'none' })
+    loadError.value = error.message
   } finally {
     loading.value = false
   }
