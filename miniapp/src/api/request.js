@@ -1,4 +1,26 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1'
+const TOKEN_KEY = 'food_saver_access_token'
+const HOUSEHOLD_KEY = 'food_saver_household_id'
+
+function authHeaders() {
+  const token = uni.getStorageSync(TOKEN_KEY)
+  const householdId = uni.getStorageSync(HOUSEHOLD_KEY)
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(householdId ? { 'X-Household-Id': String(householdId) } : {}),
+  }
+}
+
+function handleUnauthorized(path, statusCode) {
+  if (statusCode !== 401 || path.startsWith('/auth/')) return
+  uni.removeStorageSync(TOKEN_KEY)
+  uni.removeStorageSync(HOUSEHOLD_KEY)
+  const pages = getCurrentPages()
+  const current = pages[pages.length - 1]?.route || ''
+  if (current !== 'pages/login/index') {
+    uni.reLaunch({ url: '/pages/login/index' })
+  }
+}
 
 function errorMessage(data, fallback = '请求失败') {
   if (typeof data === 'string') return data
@@ -13,11 +35,18 @@ export function request(path, options = {}) {
       url: `${BASE_URL}${path}`,
       method: options.method || 'GET',
       data: options.data,
-      header: { 'Content-Type': 'application/json', ...(options.header || {}) },
+      header: {
+        'Content-Type': 'application/json',
+        ...(options.skipAuth ? {} : authHeaders()),
+        ...(options.header || {}),
+      },
       timeout: options.timeout || 60000,
       success: ({ statusCode, data }) => {
         if (statusCode >= 200 && statusCode < 300) resolve(data)
-        else reject(new Error(errorMessage(data, `请求失败（${statusCode}）`)))
+        else {
+          handleUnauthorized(path, statusCode)
+          reject(new Error(errorMessage(data, `请求失败（${statusCode}）`)))
+        }
       },
       fail: (error) => reject(new Error(error.errMsg || '无法连接后端服务')),
     })
@@ -30,6 +59,7 @@ export function uploadIngredientImage(filePath) {
       url: `${BASE_URL}/ai/recognize-ingredients`,
       filePath,
       name: 'file',
+      header: authHeaders(),
       timeout: 60000,
       success: ({ statusCode, data }) => {
         let parsed = data
@@ -45,4 +75,3 @@ export function uploadIngredientImage(filePath) {
 }
 
 export { BASE_URL }
-

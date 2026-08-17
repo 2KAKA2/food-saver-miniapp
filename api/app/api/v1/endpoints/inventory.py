@@ -7,23 +7,24 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.entities import InventoryBatch, StockChange
 from app.schemas.api import InventoryInput, InventoryOut
+from app.services.auth import HouseholdContext, get_household_context
 from app.services.inventory import calculate_status, inventory_sort_key, serialize_inventory
 
 
 router = APIRouter()
-DEMO_USER_ID = 1
 
 
 @router.get("", response_model=list[InventoryOut])
 def list_inventory(
     status_filter: str | None = Query(default=None, alias="status"),
     keyword: str = "",
+    context: HouseholdContext = Depends(get_household_context),
     db: Session = Depends(get_db),
 ):
     if status_filter not in {None, "normal", "expiring", "today", "expired"}:
         raise HTTPException(status_code=422, detail="不支持的库存状态")
     query = select(InventoryBatch).where(
-        InventoryBatch.user_id == DEMO_USER_ID,
+        InventoryBatch.household_id == context.household.id,
         InventoryBatch.quantity > 0,
     )
     if keyword.strip():
@@ -35,13 +36,22 @@ def list_inventory(
 
 
 @router.post("", response_model=InventoryOut, status_code=status.HTTP_201_CREATED)
-def create_inventory(payload: InventoryInput, db: Session = Depends(get_db)):
-    batch = InventoryBatch(user_id=DEMO_USER_ID, **payload.model_dump())
+def create_inventory(
+    payload: InventoryInput,
+    context: HouseholdContext = Depends(get_household_context),
+    db: Session = Depends(get_db),
+):
+    batch = InventoryBatch(
+        household_id=context.household.id,
+        created_by_user_id=context.user.id,
+        **payload.model_dump(),
+    )
     db.add(batch)
     db.flush()
     db.add(
         StockChange(
-            user_id=DEMO_USER_ID,
+            household_id=context.household.id,
+            actor_user_id=context.user.id,
             batch_id=batch.id,
             batch_name=batch.name,
             change_type="add",
@@ -57,9 +67,14 @@ def create_inventory(payload: InventoryInput, db: Session = Depends(get_db)):
 
 
 @router.put("/{batch_id}", response_model=InventoryOut)
-def update_inventory(batch_id: int, payload: InventoryInput, db: Session = Depends(get_db)):
+def update_inventory(
+    batch_id: int,
+    payload: InventoryInput,
+    context: HouseholdContext = Depends(get_household_context),
+    db: Session = Depends(get_db),
+):
     batch = db.get(InventoryBatch, batch_id)
-    if not batch or batch.user_id != DEMO_USER_ID:
+    if not batch or batch.household_id != context.household.id:
         raise HTTPException(status_code=404, detail="库存记录不存在")
     before = Decimal(batch.quantity)
     for field, value in payload.model_dump().items():
@@ -67,7 +82,8 @@ def update_inventory(batch_id: int, payload: InventoryInput, db: Session = Depen
     db.flush()
     db.add(
         StockChange(
-            user_id=DEMO_USER_ID,
+            household_id=context.household.id,
+            actor_user_id=context.user.id,
             batch_id=batch.id,
             batch_name=batch.name,
             change_type="update",
@@ -83,14 +99,19 @@ def update_inventory(batch_id: int, payload: InventoryInput, db: Session = Depen
 
 
 @router.delete("/{batch_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_inventory(batch_id: int, db: Session = Depends(get_db)):
+def delete_inventory(
+    batch_id: int,
+    context: HouseholdContext = Depends(get_household_context),
+    db: Session = Depends(get_db),
+):
     batch = db.get(InventoryBatch, batch_id)
-    if not batch or batch.user_id != DEMO_USER_ID:
+    if not batch or batch.household_id != context.household.id:
         raise HTTPException(status_code=404, detail="库存记录不存在")
     before = Decimal(batch.quantity)
     db.add(
         StockChange(
-            user_id=DEMO_USER_ID,
+            household_id=context.household.id,
+            actor_user_id=context.user.id,
             batch_id=None,
             batch_name=batch.name,
             change_type="delete",
@@ -103,4 +124,3 @@ def delete_inventory(batch_id: int, db: Session = Depends(get_db)):
     db.delete(batch)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.entities import InventoryBatch
 from app.schemas.api import DashboardOut
+from app.services.auth import HouseholdContext, get_household_context
 from app.services.inventory import calculate_status, inventory_sort_key, serialize_inventory
 
 
@@ -12,9 +13,15 @@ router = APIRouter()
 
 
 @router.get("/dashboard", response_model=DashboardOut)
-def dashboard(db: Session = Depends(get_db)):
+def dashboard(
+    context: HouseholdContext = Depends(get_household_context),
+    db: Session = Depends(get_db),
+):
     batches = db.scalars(
-        select(InventoryBatch).where(InventoryBatch.user_id == 1, InventoryBatch.quantity > 0)
+        select(InventoryBatch).where(
+            InventoryBatch.household_id == context.household.id,
+            InventoryBatch.quantity > 0,
+        )
     ).all()
     counters = {"normal": 0, "expiring": 0, "today": 0, "expired": 0}
     urgent = []
@@ -32,4 +39,3 @@ def dashboard(db: Session = Depends(get_db)):
         expired_count=counters["expired"],
         expiring_items=[serialize_inventory(item) for item in urgent],
     )
-

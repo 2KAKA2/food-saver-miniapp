@@ -2,6 +2,8 @@ import os
 
 os.environ["ZHIPU_API_KEY"] = ""
 os.environ["SEED_DEMO_DATA"] = "false"
+os.environ["ALLOW_DEV_LOGIN"] = "true"
+os.environ["DEV_LOGIN_SECRET"] = "test-dev-key"
 
 import pytest
 from fastapi.testclient import TestClient
@@ -36,5 +38,16 @@ def client(db_session):
 
     app.dependency_overrides[get_db] = override_db
     with TestClient(app) as test_client:
+        login = test_client.post(
+            "/api/v1/auth/dev",
+            json={"openid": "default-test-user", "nickname": "测试用户", "dev_key": "test-dev-key"},
+        )
+        assert login.status_code == 200
+        data = login.json()
+        test_client.headers.update(
+            {
+                "Authorization": f"Bearer {data['access_token']}",
+                "X-Household-Id": str(data["households"][0]["id"]),
+            }
+        )
         yield test_client
-

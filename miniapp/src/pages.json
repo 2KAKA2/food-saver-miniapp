@@ -1,6 +1,10 @@
 {
   "pages": [
     {
+      "path": "pages/login/index",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
       "path": "pages/home/index",
       "style": { "navigationBarTitleText": "食尽其用" }
     },
@@ -15,6 +19,10 @@
     {
       "path": "pages/recipe/history",
       "style": { "navigationBarTitleText": "菜谱记录" }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": { "navigationBarTitleText": "我的家庭" }
     },
     {
       "path": "pages/inventory/form",
@@ -34,7 +42,8 @@
       { "pagePath": "pages/home/index", "text": "首页" },
       { "pagePath": "pages/inventory/index", "text": "库存" },
       { "pagePath": "pages/recipe/generate", "text": "AI菜谱" },
-      { "pagePath": "pages/recipe/history", "text": "记录" }
+      { "pagePath": "pages/recipe/history", "text": "记录" },
+      { "pagePath": "pages/profile/index", "text": "我的" }
     ]
   },
   "globalStyle": {
@@ -44,4 +53,3 @@
     "backgroundColor": "#f5f7f2"
   }
 }
-

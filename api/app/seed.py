@@ -1,29 +1,42 @@
 import json
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.entities import InventoryBatch, Recipe, StockChange
+from app.models.entities import Household, HouseholdMember, InventoryBatch, Recipe, StockChange, User
 
 
 def seed_demo_data(db: Session):
     count = db.scalar(select(func.count()).select_from(InventoryBatch)) or 0
     if count:
         return
+    user = db.scalar(select(User).where(User.openid == "dev:demo-seed"))
+    if not user:
+        user = User(openid="dev:demo-seed", nickname="演示用户", last_login_at=datetime.now())
+        db.add(user)
+        db.flush()
+    household = db.scalar(select(Household).where(Household.owner_id == user.id))
+    if not household:
+        household = Household(name="演示家庭", owner_id=user.id)
+        db.add(household)
+        db.flush()
+        db.add(HouseholdMember(household_id=household.id, user_id=user.id, role="owner"))
     today = date.today()
     batches = [
-        InventoryBatch(name="西红柿", category="蔬菜", quantity=3, unit="个", location="冷藏", purchase_date=today, expiry_date=today + timedelta(days=1), note="优先食用"),
-        InventoryBatch(name="鸡蛋", category="蛋奶", quantity=8, unit="个", location="冷藏", purchase_date=today, expiry_date=today + timedelta(days=7)),
-        InventoryBatch(name="牛奶", category="蛋奶", quantity=1, unit="盒", location="冷藏", purchase_date=today, expiry_date=today + timedelta(days=2)),
-        InventoryBatch(name="大米", category="主食", quantity=2, unit="kg", location="橱柜", purchase_date=today, expiry_date=today + timedelta(days=120)),
+        InventoryBatch(household_id=household.id, created_by_user_id=user.id, name="西红柿", category="蔬菜", quantity=3, unit="个", location="冷藏", purchase_date=today, expiry_date=today + timedelta(days=1), note="优先食用"),
+        InventoryBatch(household_id=household.id, created_by_user_id=user.id, name="鸡蛋", category="蛋奶", quantity=8, unit="个", location="冷藏", purchase_date=today, expiry_date=today + timedelta(days=7)),
+        InventoryBatch(household_id=household.id, created_by_user_id=user.id, name="牛奶", category="蛋奶", quantity=1, unit="盒", location="冷藏", purchase_date=today, expiry_date=today + timedelta(days=2)),
+        InventoryBatch(household_id=household.id, created_by_user_id=user.id, name="大米", category="主食", quantity=2, unit="kg", location="橱柜", purchase_date=today, expiry_date=today + timedelta(days=120)),
     ]
     db.add_all(batches)
     db.flush()
     for batch in batches:
         db.add(
             StockChange(
+                household_id=household.id,
+                actor_user_id=user.id,
                 batch_id=batch.id,
                 batch_name=batch.name,
                 change_type="add",
@@ -34,6 +47,8 @@ def seed_demo_data(db: Session):
             )
         )
     demo_recipe = Recipe(
+        household_id=household.id,
+        created_by_user_id=user.id,
         title="番茄炒蛋",
         servings=2,
         cook_time_minutes=15,
@@ -56,4 +71,3 @@ def seed_demo_data(db: Session):
     )
     db.add(demo_recipe)
     db.commit()
-

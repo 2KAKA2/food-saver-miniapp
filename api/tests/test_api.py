@@ -104,3 +104,74 @@ def test_image_fallback_does_not_write_inventory(client):
     assert response.json()["source"] == "fallback"
     assert len(client.get("/api/v1/inventory").json()) == before
 
+
+def test_household_invite_and_cross_household_isolation(client):
+    assert client.get(
+        "/api/v1/inventory",
+        headers={"Authorization": "", "X-Household-Id": ""},
+    ).status_code == 401
+    owner_login = client.post(
+        "/api/v1/auth/dev",
+        json={"openid": "owner", "nickname": "家庭所有者", "dev_key": "test-dev-key"},
+    ).json()
+    member_login = client.post(
+        "/api/v1/auth/dev",
+        json={"openid": "member", "nickname": "家庭成员", "dev_key": "test-dev-key"},
+    ).json()
+    owner_household = owner_login["households"][0]["id"]
+    member_household = member_login["households"][0]["id"]
+    owner_headers = {
+        "Authorization": f"Bearer {owner_login['access_token']}",
+        "X-Household-Id": str(owner_household),
+    }
+    member_headers = {
+        "Authorization": f"Bearer {member_login['access_token']}",
+        "X-Household-Id": str(member_household),
+    }
+
+    created = client.post(
+        "/api/v1/inventory",
+        json=inventory_payload("家庭共享西红柿", "3", 2),
+        headers=owner_headers,
+    )
+    assert created.status_code == 201
+    assert client.get("/api/v1/inventory", headers=member_headers).json() == []
+
+    forbidden_headers = {**member_headers, "X-Household-Id": str(owner_household)}
+    assert client.get("/api/v1/inventory", headers=forbidden_headers).status_code == 403
+
+    invite = client.post(
+        "/api/v1/households/current/invites",
+        json={"expires_in_hours": 24, "max_uses": 1},
+        headers=owner_headers,
+    )
+    assert invite.status_code == 201
+    join = client.post(
+        "/api/v1/households/join",
+        json={"invite_code": invite.json()["invite_code"]},
+        headers={"Authorization": member_headers["Authorization"]},
+    )
+    assert join.status_code == 200
+    assert client.post(
+        "/api/v1/households/join",
+        json={"invite_code": invite.json()["invite_code"]},
+        headers={"Authorization": member_headers["Authorization"]},
+    ).status_code == 404
+    shared_headers = {**member_headers, "X-Household-Id": str(owner_household)}
+    assert client.get("/api/v1/inventory", headers=shared_headers).json()[0]["name"] == "家庭共享西红柿"
+    assert client.post(
+        "/api/v1/households/current/invites",
+        json={"expires_in_hours": 24, "max_uses": 1},
+        headers=shared_headers,
+    ).status_code == 403
+
+
+def test_logout_revokes_session(client):
+    login = client.post(
+        "/api/v1/auth/dev",
+        json={"openid": "logout-user", "nickname": "退出用户", "dev_key": "test-dev-key"},
+    ).json()
+    headers = {"Authorization": f"Bearer {login['access_token']}"}
+    assert client.get("/api/v1/auth/me", headers=headers).status_code == 200
+    assert client.post("/api/v1/auth/logout", headers=headers).status_code == 204
+    assert client.get("/api/v1/auth/me", headers=headers).status_code == 401

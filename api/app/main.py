@@ -5,14 +5,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
 from app.core.config import settings
-from app.db.session import Base, SessionLocal, engine
+from app.db.session import SessionLocal
 from app.seed import seed_demo_data
 
 
 def create_app(seed_demo: bool | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI):
-        Base.metadata.create_all(bind=engine)
         should_seed = settings.seed_demo_data if seed_demo is None else seed_demo
         if should_seed:
             with SessionLocal() as db:
@@ -28,7 +27,7 @@ def create_app(seed_demo: bool | None = None) -> FastAPI:
     )
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=settings.cors_origins,
         allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -43,4 +42,3 @@ def create_app(seed_demo: bool | None = None) -> FastAPI:
 
 
 app = create_app()
-

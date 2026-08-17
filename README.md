@@ -5,6 +5,8 @@
 ## 已实现功能
 
 - 首页库存统计、临期和过期提醒
+- 微信登录服务端换取身份，客户端不保存或接触微信 AppSecret
+- 多家庭空间、家庭切换、邀请码加入与成员权限管理
 - 食材批次的新增、编辑、搜索、筛选和删除
 - 常用食材快捷录入与图片识别候选
 - 按人数、口味和时间生成 AI 菜谱
@@ -29,6 +31,7 @@
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 Copy-Item .env.example .env
+.\.venv\Scripts\python.exe -m alembic upgrade head
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -37,7 +40,7 @@ Copy-Item .env.example .env
 - 接口文档：`http://127.0.0.1:8000/docs`
 - 健康检查：`http://127.0.0.1:8000/health`
 
-默认使用 `api/data/food_inventory.db`，首次启动会自动建表并加入演示食材和菜谱。需要 MySQL 时，将 `.env` 中的 `DATABASE_URL` 改为：
+默认使用 `api/data/food_inventory.db`。数据库结构统一由 Alembic 管理，每次更新代码后应先执行 `python -m alembic upgrade head`。需要 MySQL 时，将 `.env` 中的 `DATABASE_URL` 改为：
 
 ```text
 mysql+pymysql://用户名:密码@127.0.0.1:3306/数据库名?charset=utf8mb4
@@ -54,6 +57,26 @@ ZHIPU_VISION_MODEL=glm-4.6v-flash
 ```
 
 不要把 `.env` 提交到 Git。未配置密钥、网络异常或模型输出不合法时，后端会自动使用演示菜谱或演示识别结果，并在响应中返回 `source: "fallback"`。
+
+## 配置微信登录
+
+微信登录采用“小程序 `uni.login` 获取一次性 code，后端调用微信 `code2session`”的方式。AppSecret 只能配置在后端：
+
+```text
+WECHAT_APP_ID=你的小程序AppID
+WECHAT_APP_SECRET=你的小程序AppSecret
+ALLOW_DEV_LOGIN=false
+SEED_DEMO_DATA=false
+```
+
+同时将 `miniapp/src/manifest.json` 中 `mp-weixin.appid` 替换为同一个 AppID，并在正式构建使用的环境文件中设置：
+
+```text
+VITE_AUTH_MODE=wechat
+VITE_API_BASE_URL=https://你的备案域名/api/v1
+```
+
+本地开发可以保留 `ALLOW_DEV_LOGIN=true` 和 `VITE_AUTH_MODE=dev`，但生产服务器必须关闭开发登录。开发登录密钥只用于本机联调，不能用于正式环境。
 
 ## 运行手机端网页
 
@@ -89,6 +112,14 @@ miniapp/dist/build/mp-weixin
 
 正式上线时仍需配置真实微信 AppID、HTTPS 服务器和微信小程序合法域名。
 
+## 家庭共享与权限
+
+- 用户首次登录时自动创建个人家庭。
+- 用户可以创建多个家庭，并在“我的”页面切换当前家庭。
+- 只有家庭所有者可以生成邀请码、移除成员或转让所有者。
+- 邀请码默认 24 小时有效且只能使用一次，服务端仅保存邀请码哈希。
+- 所有库存、菜谱和变更记录都绑定家庭；后端会校验成员关系，客户端修改家庭编号不能越权读取数据。
+
 ## 测试与构建
 
 后端测试：
@@ -96,6 +127,7 @@ miniapp/dist/build/mp-weixin
 ```powershell
 cd api
 .\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m alembic check
 ```
 
 前端构建：
@@ -114,4 +146,3 @@ npm run build:mp-weixin
 4. 进入 AI 菜谱页选择食材并生成菜谱。
 5. 在菜谱详情中修改实际用量并确认制作。
 6. 返回库存页展示数量已经扣减，再到历史页查看已制作状态。
-

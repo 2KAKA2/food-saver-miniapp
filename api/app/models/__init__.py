@@ -1,4 +1,21 @@
-from app.models.entities import InventoryBatch, Recipe, StockChange
+from app.models.entities import (
+    Household,
+    HouseholdInvite,
+    HouseholdMember,
+    InventoryBatch,
+    Recipe,
+    StockChange,
+    User,
+    UserSession,
+)
 
-__all__ = ["InventoryBatch", "Recipe", "StockChange"]
-
+__all__ = [
+    "User",
+    "UserSession",
+    "Household",
+    "HouseholdMember",
+    "HouseholdInvite",
+    "InventoryBatch",
+    "Recipe",
+    "StockChange",
+]
