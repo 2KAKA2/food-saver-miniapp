@@ -1,0 +1,47 @@
+{
+  "pages": [
+    {
+      "path": "pages/home/index",
+      "style": { "navigationBarTitleText": "食尽其用" }
+    },
+    {
+      "path": "pages/inventory/index",
+      "style": { "navigationBarTitleText": "食材库存" }
+    },
+    {
+      "path": "pages/recipe/generate",
+      "style": { "navigationBarTitleText": "AI 菜谱" }
+    },
+    {
+      "path": "pages/recipe/history",
+      "style": { "navigationBarTitleText": "菜谱记录" }
+    },
+    {
+      "path": "pages/inventory/form",
+      "style": { "navigationBarTitleText": "录入食材" }
+    },
+    {
+      "path": "pages/recipe/detail",
+      "style": { "navigationBarTitleText": "菜谱详情" }
+    }
+  ],
+  "tabBar": {
+    "color": "#879188",
+    "selectedColor": "#2f7d4a",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      { "pagePath": "pages/home/index", "text": "首页" },
+      { "pagePath": "pages/inventory/index", "text": "库存" },
+      { "pagePath": "pages/recipe/generate", "text": "AI菜谱" },
+      { "pagePath": "pages/recipe/history", "text": "记录" }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "食尽其用",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f5f7f2"
+  }
+}
+

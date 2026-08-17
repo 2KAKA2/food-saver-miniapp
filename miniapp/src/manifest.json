@@ -1,0 +1,22 @@
+{
+  "name": "食尽其用",
+  "appid": "__UNI__FOODSAVER",
+  "description": "AI 家庭食材库存与菜谱生成助手",
+  "versionName": "0.1.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "h5": {
+    "router": { "mode": "hash" },
+    "title": "食尽其用"
+  },
+  "mp-weixin": {
+    "appid": "touristappid",
+    "setting": {
+      "urlCheck": false,
+      "es6": true,
+      "minified": true
+    },
+    "usingComponents": true
+  }
+}
+
