@@ -20,6 +20,7 @@
 - 生产环境关闭交互式接口文档，容器日志与数据库备份自动轮转
 - H5 与微信小程序双端构建
 - 本地电脑断连时按家庭显示最近一次库存只读快照
+- 首页、库存、AI 菜谱、记录和我的使用带选中态的原生底部导航图标
 
 ## 项目结构
 
@@ -46,7 +47,7 @@ Copy-Item .env.example .env
 - 接口文档：`http://127.0.0.1:8000/docs`
 - 健康检查：`http://127.0.0.1:8000/health`
 
-默认使用 `api/data/food_inventory.db`。数据库结构统一由 Alembic 管理，每次更新代码后应先执行 `python -m alembic upgrade head`。需要 MySQL 时，将 `.env` 中的 `DATABASE_URL` 改为：
+默认开发配置使用 SQLite，数据库文件位置由 `api/.env` 的 `DATABASE_URL` 决定；当前本地联调环境使用 `api/data/food_inventory_v2.db`。数据库结构统一由 Alembic 管理，每次更新代码后应先执行 `python -m alembic upgrade head`。正式部署使用 MySQL 8.4，需要手动切换时将 `.env` 中的 `DATABASE_URL` 改为：
 
 ```text
 mysql+pymysql://用户名:密码@127.0.0.1:3306/数据库名?charset=utf8mb4
