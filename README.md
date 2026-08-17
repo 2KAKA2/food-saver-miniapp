@@ -141,9 +141,22 @@ npm run build:h5
 npm run build:mp-weixin
 ```
 
+仓库包含 GitHub Actions 自动检查，会在推送和合并请求时执行后端测试、数据库迁移校验、H5/微信小程序构建和部署模板检查。
+
+正式发布前，复制并填写 `.env.deploy` 与 `miniapp/.env.production`，再从项目根目录执行：
+
+```powershell
+.\api\.venv\Scripts\python.exe scripts\release_preflight.py
+docker compose --env-file .env.deploy config --quiet
+```
+
+该检查不会输出密钥内容，只会列出缺失、仍为占位值或互相不一致的配置项。
+
 ## 生产部署
 
 生产部署基线位于 `deploy/`，使用 Caddy 自动 HTTPS、FastAPI、MySQL 8.4 LTS 和 Redis。执行前需要准备备案域名、云服务器、微信 AppSecret 和 AI API Key，具体步骤见 `deploy/README.md`。
+
+从云资源准备到微信提审的逐项清单见 `deploy/RELEASE_CHECKLIST.md`。
 
 生产环境会进行启动安全校验：使用 SQLite、缺少 Redis/微信/AI 配置、开启开发登录或演示数据时，API 会拒绝启动。`/health/live` 用于进程存活检查，`/health/ready` 用于数据库就绪检查。
 

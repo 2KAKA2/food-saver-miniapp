@@ -1,0 +1,57 @@
+name: project-checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: sqlite:///./ci.db
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+      - run: python -m pip install -r requirements.txt
+      - run: python -m pytest -q
+      - run: python -m alembic upgrade head
+      - run: python -m alembic check
+
+  miniapp:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: miniapp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: miniapp/package-lock.json
+      - run: npm ci
+      - run: npm run build:h5
+      - run: npm run build:mp-weixin
+
+  release-templates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate release templates
+        run: >-
+          python scripts/release_preflight.py
+          --deploy-env .env.deploy.example
+          --miniapp-env miniapp/.env.production.example
+          --template
+      - name: Validate Compose configuration
+        run: docker compose --env-file .env.deploy.example config --quiet
