@@ -34,6 +34,17 @@
       </view>
     </view>
 
+    <view v-if="!loading && !loadError && dashboard.inventory_count === 0" class="onboarding card">
+      <text class="onboarding-title">三步开始使用</text>
+      <view class="onboarding-step"><text class="step-number">1</text><text>先录入一两种家中食材和到期日</text></view>
+      <view class="onboarding-step"><text class="step-number">2</text><text>需要时邀请家人共享同一份库存</text></view>
+      <view class="onboarding-step"><text class="step-number">3</text><text>选择现有食材，让 AI 生成菜谱</text></view>
+      <view class="onboarding-actions">
+        <button class="start-button" @tap="openForm">录入第一份食材</button>
+        <button class="family-button" @tap="openProfile">管理家庭</button>
+      </view>
+    </view>
+
     <view class="section-head">
       <text class="section-title">临期提醒</text>
       <text class="section-link" @tap="openInventory">查看库存 ›</text>
@@ -94,6 +105,7 @@ async function loadDashboard() {
 const openForm = () => uni.navigateTo({ url: '/pages/inventory/form' })
 const openRecipe = () => uni.switchTab({ url: '/pages/recipe/generate' })
 const openInventory = () => uni.switchTab({ url: '/pages/inventory/index' })
+const openProfile = () => uni.switchTab({ url: '/pages/profile/index' })
 
 onShow(loadDashboard)
 </script>
@@ -114,6 +126,14 @@ onShow(loadDashboard)
 .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 20rpx; margin-top: 24rpx; }
 .action { display: flex; align-items: center; gap: 18rpx; padding: 26rpx 30rpx; border-radius: 22rpx; background: #fff; font-size: 28rpx; font-weight: 600; }
 .action-icon { display: grid; place-items: center; width: 52rpx; height: 52rpx; border-radius: 16rpx; background: #e7f5eb; color: #2f7d4a; font-size: 34rpx; }
+.onboarding { margin-top: 24rpx; background: #fffaf0; }
+.onboarding-title { display: block; margin-bottom: 18rpx; color: #6f541e; font-size: 30rpx; font-weight: 700; }
+.onboarding-step { display: flex; align-items: center; gap: 16rpx; margin-top: 14rpx; color: #5e615d; font-size: 24rpx; }
+.step-number { display: grid; place-items: center; width: 42rpx; height: 42rpx; border-radius: 50%; background: #f4d995; color: #6f541e; font-weight: 700; }
+.onboarding-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; margin-top: 24rpx; }
+.start-button, .family-button { height: 70rpx; line-height: 70rpx; padding: 0; border-radius: 35rpx; font-size: 23rpx; }
+.start-button { background: #2f7d4a; color: #fff; }
+.family-button { background: #e7f5eb; color: #2f7d4a; }
 .section-head { display: flex; align-items: center; justify-content: space-between; margin: 42rpx 4rpx 20rpx; }
 .section-title { font-size: 32rpx; font-weight: 700; }
 .section-link { color: #2f7d4a; font-size: 25rpx; }

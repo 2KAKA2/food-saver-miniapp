@@ -55,21 +55,17 @@ export const useAuthStore = defineStore('auth', () => {
     })
   }
 
-  async function login(profile = {}) {
+  async function login() {
     let data
     if (AUTH_MODE === 'dev') {
       data = await api.devLogin({
         openid: import.meta.env.VITE_DEV_OPENID || 'local-user',
-        nickname: profile.nickname || '本地体验用户',
+        nickname: '本地体验用户',
         dev_key: import.meta.env.VITE_DEV_LOGIN_KEY || '',
       })
     } else {
       const code = await wxLoginCode()
-      data = await api.wechatLogin({
-        code,
-        nickname: profile.nickname || null,
-        avatar_url: profile.avatarUrl || null,
-      })
+      data = await api.wechatLogin({ code })
     }
     applyLogin(data)
     return data

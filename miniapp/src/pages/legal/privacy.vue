@@ -5,7 +5,7 @@
 
     <view class="section">
       <text class="heading">一、我们收集的信息</text>
-      <text class="paragraph">为完成登录，我们通过微信登录获得用于识别账号的 OpenID；在你主动授权后，可能使用微信昵称和头像。为提供核心服务，我们保存你录入的食材名称、数量、存放位置、保质期、菜谱、家庭成员关系和库存变更记录。</text>
+      <text class="paragraph">为完成登录，我们通过微信登录获得用于识别账号的 OpenID。我们不会读取你的微信昵称或头像；你可以自行设置仅供家庭成员相互识别的显示昵称。为提供核心服务，我们保存你录入的食材名称、数量、存放位置、保质期、菜谱、家庭成员关系和库存变更记录。</text>
     </view>
     <view class="section">
       <text class="heading">二、图片与人工智能服务</text>
@@ -39,4 +39,3 @@
 .heading { font-size: 29rpx; font-weight: 700; }
 .paragraph { margin-top: 14rpx; color: #526058; font-size: 26rpx; line-height: 1.9; text-align: justify; }
 </style>
-

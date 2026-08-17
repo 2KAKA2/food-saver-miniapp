@@ -5,6 +5,7 @@
       <view>
         <text class="nickname">{{ auth.user?.nickname || '微信用户' }}</text>
         <text class="profile-meta">已加入 {{ auth.households.length }} 个家庭</text>
+        <text class="edit-profile" @tap="editNickname">修改家庭显示昵称</text>
       </view>
     </view>
 
@@ -106,6 +107,30 @@ async function switchHousehold(event) {
   inviteCode.value = ''
   await load()
   uni.showToast({ title: `已切换到${household.name}`, icon: 'none' })
+}
+
+function editNickname() {
+  uni.showModal({
+    title: '修改显示昵称',
+    content: '该昵称仅用于家庭成员相互识别，不会读取微信昵称。',
+    editable: true,
+    placeholderText: auth.user?.nickname || '请输入昵称',
+    success: async ({ confirm, content }) => {
+      const nickname = content?.trim() || ''
+      if (!confirm) return
+      if (!nickname || nickname.length > 80) {
+        uni.showToast({ title: '请输入不超过80个字符的昵称', icon: 'none' })
+        return
+      }
+      try {
+        await api.updateProfile({ nickname })
+        await load()
+        uni.showToast({ title: '昵称已更新' })
+      } catch (error) {
+        uni.showToast({ title: error.message, icon: 'none' })
+      }
+    },
+  })
 }
 
 async function createInvite() {
@@ -212,6 +237,7 @@ onShow(load)
 .nickname, .profile-meta { display: block; }
 .nickname { font-size: 34rpx; font-weight: 700; }
 .profile-meta { margin-top: 8rpx; color: rgba(255,255,255,.75); font-size: 23rpx; }
+.edit-profile { display: block; margin-top: 12rpx; color: rgba(255,255,255,.9); font-size: 22rpx; text-decoration: underline; }
 .section { margin-top: 22rpx; }
 .section-title { display: block; margin-bottom: 18rpx; font-size: 30rpx; font-weight: 700; }
 .household-picker { display: flex; align-items: center; justify-content: space-between; padding: 16rpx 0; color: #2f7d4a; }

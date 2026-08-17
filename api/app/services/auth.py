@@ -52,7 +52,6 @@ def get_or_create_user(
     openid: str,
     unionid: str | None = None,
     nickname: str | None = None,
-    avatar_url: str | None = None,
 ) -> User:
     user = db.scalar(select(User).where(User.openid == openid))
     now = datetime.now()
@@ -61,7 +60,6 @@ def get_or_create_user(
             openid=openid,
             unionid=unionid,
             nickname=nickname or "微信用户",
-            avatar_url=avatar_url or "",
             last_login_at=now,
         )
         db.add(user)
@@ -74,8 +72,6 @@ def get_or_create_user(
             user.unionid = unionid
         if nickname:
             user.nickname = nickname
-        if avatar_url is not None:
-            user.avatar_url = avatar_url
     ensure_personal_household(db, user)
     return user
 
@@ -84,7 +80,7 @@ def ensure_personal_household(db: Session, user: User) -> None:
     membership = db.scalar(select(HouseholdMember).where(HouseholdMember.user_id == user.id))
     if membership:
         return
-    household = Household(name=f"{user.nickname}的家", owner_id=user.id)
+    household = Household(name="我的家庭", owner_id=user.id)
     db.add(household)
     db.flush()
     db.add(HouseholdMember(household_id=household.id, user_id=user.id, role="owner"))
@@ -197,4 +193,3 @@ def require_owner(context: HouseholdContext = Depends(get_household_context)) ->
     if context.role != "owner":
         raise HTTPException(status_code=403, detail="只有家庭所有者可以执行此操作")
     return context
-

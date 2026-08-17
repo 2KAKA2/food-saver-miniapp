@@ -80,6 +80,15 @@ def test_health_checks_report_dependency_status(client):
     }
 
 
+def test_user_can_set_a_family_display_nickname(client):
+    updated = client.put("/api/v1/auth/profile", json={"nickname": "小满"})
+    assert updated.status_code == 200
+    assert set(updated.json()) == {"id", "nickname"}
+    assert updated.json()["nickname"] == "小满"
+    assert client.get("/api/v1/auth/me").json()["user"]["nickname"] == "小满"
+    assert client.put("/api/v1/auth/profile", json={"nickname": "   "}).status_code == 422
+
+
 def test_readiness_fails_when_redis_is_unavailable(client, monkeypatch):
     class FailedRedis:
         def ping(self):

@@ -46,21 +46,7 @@ async function startLogin() {
   }
   loading.value = true
   try {
-    let profile = {}
-    if (AUTH_MODE === 'wechat' && typeof uni.getUserProfile === 'function') {
-      try {
-        const result = await new Promise((resolve, reject) => {
-          uni.getUserProfile({ desc: '用于家庭成员识别', success: resolve, fail: reject })
-        })
-        profile = {
-          nickname: result.userInfo?.nickName,
-          avatarUrl: result.userInfo?.avatarUrl,
-        }
-      } catch (_) {
-        // 用户拒绝头像昵称时仍可使用默认资料登录。
-      }
-    }
-    await auth.login(profile)
+    await auth.login()
     uni.switchTab({ url: '/pages/home/index' })
   } catch (error) {
     uni.showToast({ title: error.message, icon: 'none', duration: 2500 })

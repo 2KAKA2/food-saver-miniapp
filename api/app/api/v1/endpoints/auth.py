@@ -42,7 +42,7 @@ router = APIRouter()
 
 
 def user_out(user: User) -> UserOut:
-    return UserOut(id=user.id, nickname=user.nickname, avatar_url=user.avatar_url)
+    return UserOut(id=user.id, nickname=user.nickname)
 
 
 def login_out(db: Session, user: User, token: str, session: UserSession) -> LoginOut:
@@ -61,8 +61,6 @@ def wechat_login(payload: WechatLoginRequest, db: Session = Depends(get_db)):
         db,
         openid=identity["openid"],
         unionid=identity.get("unionid"),
-        nickname=payload.nickname,
-        avatar_url=str(payload.avatar_url) if payload.avatar_url else None,
     )
     token, session = create_session(db, user)
     return login_out(db, user, token, session)
@@ -88,8 +86,7 @@ def update_profile(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    user.nickname = payload.nickname.strip()
-    user.avatar_url = str(payload.avatar_url) if payload.avatar_url else ""
+    user.nickname = payload.nickname
     db.commit()
     db.refresh(user)
     return user_out(user)

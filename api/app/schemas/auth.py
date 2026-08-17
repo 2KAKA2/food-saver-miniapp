@@ -1,12 +1,10 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field, field_validator
 
 
 class WechatLoginRequest(BaseModel):
     code: str = Field(min_length=1, max_length=200)
-    nickname: str | None = Field(default=None, max_length=80)
-    avatar_url: HttpUrl | None = None
 
 
 class DevLoginRequest(BaseModel):
@@ -18,7 +16,6 @@ class DevLoginRequest(BaseModel):
 class UserOut(BaseModel):
     id: int
     nickname: str
-    avatar_url: str
 
 
 class HouseholdSummary(BaseModel):
@@ -42,7 +39,14 @@ class MeOut(BaseModel):
 
 class ProfileUpdate(BaseModel):
     nickname: str = Field(min_length=1, max_length=80)
-    avatar_url: HttpUrl | None = None
+
+    @field_validator("nickname")
+    @classmethod
+    def validate_nickname(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("昵称不能为空")
+        return cleaned
 
 
 class AccountDeleteRequest(BaseModel):
