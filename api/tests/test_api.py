@@ -260,6 +260,80 @@ def test_household_invite_and_cross_household_isolation(client):
     ).status_code == 403
 
 
+def test_household_invite_revoke_transfer_and_leave(client):
+    owner = client.post(
+        "/api/v1/auth/dev",
+        json={"openid": "lifecycle-owner", "nickname": "原所有者", "dev_key": "test-dev-key"},
+    ).json()
+    member = client.post(
+        "/api/v1/auth/dev",
+        json={"openid": "lifecycle-member", "nickname": "新所有者", "dev_key": "test-dev-key"},
+    ).json()
+    household_id = owner["households"][0]["id"]
+    owner_headers = {
+        "Authorization": f"Bearer {owner['access_token']}",
+        "X-Household-Id": str(household_id),
+    }
+    member_auth = {"Authorization": f"Bearer {member['access_token']}"}
+
+    revoked_invite = client.post(
+        "/api/v1/households/current/invites",
+        json={"expires_in_hours": 1, "max_uses": 1},
+        headers=owner_headers,
+    ).json()
+    assert client.delete(
+        f"/api/v1/households/current/invites/{revoked_invite['invite_id']}",
+        headers=owner_headers,
+    ).status_code == 204
+    assert client.post(
+        "/api/v1/households/join",
+        json={"invite_code": revoked_invite["invite_code"]},
+        headers=member_auth,
+    ).status_code == 404
+
+    invite = client.post(
+        "/api/v1/households/current/invites",
+        json={"expires_in_hours": 1, "max_uses": 1},
+        headers=owner_headers,
+    ).json()
+    assert client.post(
+        "/api/v1/households/join",
+        json={"invite_code": invite["invite_code"]},
+        headers=member_auth,
+    ).status_code == 200
+
+    assert client.put(
+        "/api/v1/households/current", json={"name": "共同的家"}, headers=owner_headers
+    ).json()["name"] == "共同的家"
+    assert client.put(
+        "/api/v1/households/current", json={"name": "   "}, headers=owner_headers
+    ).status_code == 422
+
+    transferred = client.post(
+        "/api/v1/households/current/transfer",
+        json={"new_owner_user_id": member["user"]["id"]},
+        headers=owner_headers,
+    )
+    assert transferred.status_code == 200
+    assert transferred.json()["role"] == "member"
+    assert client.post(
+        "/api/v1/households/current/invites",
+        json={"expires_in_hours": 1, "max_uses": 1},
+        headers=owner_headers,
+    ).status_code == 403
+
+    new_owner_headers = {**member_auth, "X-Household-Id": str(household_id)}
+    assert client.get(
+        "/api/v1/households/current", headers=new_owner_headers
+    ).json()["role"] == "owner"
+    assert client.post(
+        "/api/v1/households/current/leave", headers=owner_headers
+    ).status_code == 204
+    assert client.get(
+        "/api/v1/households/current", headers=new_owner_headers
+    ).json()["member_count"] == 1
+
+
 def test_logout_revokes_session(client):
     login = client.post(
         "/api/v1/auth/dev",

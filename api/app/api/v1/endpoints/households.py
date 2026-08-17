@@ -62,7 +62,7 @@ def create_household(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    household = Household(name=payload.name.strip(), owner_id=user.id)
+    household = Household(name=payload.name, owner_id=user.id)
     db.add(household)
     db.flush()
     db.add(HouseholdMember(household_id=household.id, user_id=user.id, role="owner"))
@@ -84,7 +84,7 @@ def update_household(
     context: HouseholdContext = Depends(require_owner),
     db: Session = Depends(get_db),
 ):
-    context.household.name = payload.name.strip()
+    context.household.name = payload.name
     db.commit()
     db.refresh(context.household)
     return household_detail(db, context.household, context.role)
@@ -232,4 +232,3 @@ def leave_household(
     db.delete(membership)
     db.commit()
     return Response(status_code=204)
-

@@ -1,12 +1,20 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.auth import HouseholdSummary, UserOut
 
 
 class HouseholdCreate(BaseModel):
     name: str = Field(min_length=1, max_length=80)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("家庭名称不能为空")
+        return cleaned
 
 
 class HouseholdUpdate(HouseholdCreate):
@@ -41,4 +49,3 @@ class InviteAccept(BaseModel):
 
 class TransferOwnerRequest(BaseModel):
     new_owner_user_id: int
-

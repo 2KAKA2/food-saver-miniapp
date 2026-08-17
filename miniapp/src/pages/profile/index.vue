@@ -20,6 +20,7 @@
           <text>切换 ›</text>
         </view>
       </picker>
+      <text v-if="isOwner" class="manage-link" @tap="editHouseholdName">修改当前家庭名称</text>
     </view>
 
     <view class="card section">
@@ -32,14 +33,19 @@
           <text class="member-name">{{ member.user.nickname }}</text>
           <text class="member-role">{{ member.role === 'owner' ? '所有者' : '成员' }}</text>
         </view>
-        <text v-if="isOwner && member.role !== 'owner'" class="remove" @tap="removeMember(member)">移除</text>
+        <view v-if="isOwner && member.role !== 'owner'" class="member-actions">
+          <text class="transfer" @tap="transferOwner(member)">转让</text>
+          <text class="remove" @tap="removeMember(member)">移除</text>
+        </view>
       </view>
       <button v-if="isOwner" class="secondary-button invite-button" @tap="createInvite">生成家庭邀请码</button>
       <view v-if="inviteCode" class="invite-result" @tap="copyInvite">
         <text class="invite-label">邀请码（点击复制）</text>
         <text class="invite-code">{{ inviteCode }}</text>
         <text class="invite-expiry">24小时内有效，使用一次后失效</text>
+        <text class="revoke-invite" @tap.stop="revokeInvite">撤销这个邀请码</text>
       </view>
+      <button v-if="!isOwner" class="leave-button" @tap="leaveHousehold">退出当前家庭</button>
     </view>
 
     <view class="card section">
@@ -80,6 +86,7 @@ const detail = ref(null)
 const loading = ref(false)
 const loadError = ref('')
 const inviteCode = ref('')
+const inviteId = ref(null)
 const joinCode = ref('')
 const newHouseholdName = ref('')
 const householdNames = computed(() => auth.households.map((item) => `${item.name}（${item.member_count}人）`))
@@ -105,6 +112,7 @@ async function switchHousehold(event) {
   if (!household) return
   auth.switchHousehold(household.id)
   inviteCode.value = ''
+  inviteId.value = null
   await load()
   uni.showToast({ title: `已切换到${household.name}`, icon: 'none' })
 }
@@ -133,9 +141,33 @@ function editNickname() {
   })
 }
 
+function editHouseholdName() {
+  uni.showModal({
+    title: '修改家庭名称',
+    editable: true,
+    placeholderText: auth.currentHousehold?.name || '请输入家庭名称',
+    success: async ({ confirm, content }) => {
+      const name = content?.trim() || ''
+      if (!confirm) return
+      if (!name || name.length > 80) {
+        uni.showToast({ title: '请输入不超过80个字符的家庭名称', icon: 'none' })
+        return
+      }
+      try {
+        await api.updateHousehold({ name })
+        await load()
+        uni.showToast({ title: '家庭名称已更新' })
+      } catch (error) {
+        uni.showToast({ title: error.message, icon: 'none' })
+      }
+    },
+  })
+}
+
 async function createInvite() {
   try {
     const invite = await api.createInvite({ expires_in_hours: 24, max_uses: 1 })
+    inviteId.value = invite.invite_id
     inviteCode.value = invite.invite_code
   } catch (error) {
     uni.showToast({ title: error.message, icon: 'none' })
@@ -144,6 +176,18 @@ async function createInvite() {
 
 function copyInvite() {
   uni.setClipboardData({ data: inviteCode.value })
+}
+
+async function revokeInvite() {
+  if (!inviteId.value) return
+  try {
+    await api.revokeInvite(inviteId.value)
+    inviteId.value = null
+    inviteCode.value = ''
+    uni.showToast({ title: '邀请码已撤销' })
+  } catch (error) {
+    uni.showToast({ title: error.message, icon: 'none' })
+  }
 }
 
 async function joinHousehold() {
@@ -185,6 +229,47 @@ function removeMember(member) {
         await auth.refresh()
         await load()
         uni.showToast({ title: '已移除' })
+      } catch (error) {
+        uni.showToast({ title: error.message, icon: 'none' })
+      }
+    },
+  })
+}
+
+function transferOwner(member) {
+  uni.showModal({
+    title: '转让家庭所有者',
+    content: `转让给“${member.user.nickname}”后，你将变为普通成员，是否继续？`,
+    confirmColor: '#b7791f',
+    success: async ({ confirm }) => {
+      if (!confirm) return
+      try {
+        await api.transferOwner(member.user.id)
+        inviteId.value = null
+        inviteCode.value = ''
+        await load()
+        uni.showToast({ title: '所有者已转让' })
+      } catch (error) {
+        uni.showToast({ title: error.message, icon: 'none' })
+      }
+    },
+  })
+}
+
+function leaveHousehold() {
+  uni.showModal({
+    title: '退出当前家庭',
+    content: '退出后将无法查看这个家庭的库存、菜谱和消耗记录，是否继续？',
+    confirmColor: '#c34249',
+    success: async ({ confirm }) => {
+      if (!confirm) return
+      try {
+        await api.leaveHousehold()
+        await auth.refresh()
+        inviteId.value = null
+        inviteCode.value = ''
+        await load()
+        uni.showToast({ title: '已退出家庭' })
       } catch (error) {
         uni.showToast({ title: error.message, icon: 'none' })
       }
@@ -244,18 +329,23 @@ onShow(load)
 .household-name, .household-role { display: block; }
 .household-name { color: #27362c; font-size: 30rpx; font-weight: 650; }
 .household-role { margin-top: 6rpx; color: #8a948d; font-size: 22rpx; }
+.manage-link { display: block; margin-top: 16rpx; color: #2f7d4a; font-size: 23rpx; }
 .member-row { display: flex; align-items: center; padding: 18rpx 0; border-bottom: 1rpx solid #edf0ed; }
 .member-avatar { width: 64rpx; height: 64rpx; background: #e7f5eb; color: #2f7d4a; }
 .member-main { flex: 1; margin-left: 16rpx; }
 .member-name, .member-role { display: block; }
 .member-name { font-size: 27rpx; }
 .member-role { margin-top: 4rpx; color: #909991; font-size: 21rpx; }
+.member-actions { display: flex; gap: 24rpx; font-size: 24rpx; }
+.transfer { color: #99701d; }
 .remove { color: #c34249; font-size: 24rpx; }
 .invite-button { margin-top: 24rpx; }
 .invite-result { margin-top: 20rpx; padding: 24rpx; border-radius: 18rpx; background: #f1f7f2; text-align: center; }
 .invite-label, .invite-code, .invite-expiry { display: block; }
 .invite-label, .invite-expiry { color: #7d8980; font-size: 21rpx; }
 .invite-code { margin: 14rpx 0; color: #2f7d4a; font-family: monospace; font-size: 34rpx; font-weight: 700; word-break: break-all; }
+.revoke-invite { display: block; margin-top: 18rpx; color: #bd4249; font-size: 23rpx; }
+.leave-button { margin-top: 22rpx; background: #fff3f3; color: #bd4249; font-size: 25rpx; }
 .inline-form { display: flex; gap: 14rpx; }
 .input { flex: 1; height: 74rpx; padding: 0 20rpx; border-radius: 14rpx; background: #f3f6f3; font-size: 25rpx; }
 .small-button { width: 130rpx; height: 74rpx; line-height: 74rpx; padding: 0; border-radius: 14rpx; background: #2f7d4a; color: #fff; font-size: 25rpx; }

@@ -12,6 +12,7 @@ export const api = {
   createHousehold: (data) => request('/households', { method: 'POST', data }),
   updateHousehold: (data) => request('/households/current', { method: 'PUT', data }),
   createInvite: (data = {}) => request('/households/current/invites', { method: 'POST', data }),
+  revokeInvite: (inviteId) => request(`/households/current/invites/${inviteId}`, { method: 'DELETE' }),
   joinHousehold: (data) => request('/households/join', { method: 'POST', data }),
   removeMember: (userId) => request(`/households/current/members/${userId}`, { method: 'DELETE' }),
   transferOwner: (userId) => request('/households/current/transfer', { method: 'POST', data: { new_owner_user_id: userId } }),
