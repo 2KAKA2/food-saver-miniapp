@@ -17,7 +17,7 @@
     "vue": "3.4.21"
   },
   "devDependencies": {
-    "@dcloudio/types": "3.4.31",
+    "@dcloudio/types": "3.4.32",
     "@dcloudio/vite-plugin-uni": "3.0.0-5020420260813003",
     "vite": "5.2.8"
   },
