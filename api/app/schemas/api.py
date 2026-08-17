@@ -68,6 +68,11 @@ class RecognitionOut(BaseModel):
     message: str = ""
 
 
+class Base64ImageInput(BaseModel):
+    image_base64: str = Field(min_length=1, max_length=7_100_000)
+    content_type: str | None = Field(default=None, max_length=80)
+
+
 class RecipeGenerateRequest(BaseModel):
     inventory_ids: list[int] = Field(default_factory=list, max_length=100)
     servings: int = Field(default=2, ge=1, le=10)

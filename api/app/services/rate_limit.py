@@ -65,7 +65,7 @@ class RateLimiter:
 
     def health_status(self) -> tuple[bool, str]:
         if self._redis is None:
-            return settings.environment != "production", "disabled"
+            return not settings.require_redis, "disabled"
         try:
             available = bool(self._redis.ping())
         except RedisError:

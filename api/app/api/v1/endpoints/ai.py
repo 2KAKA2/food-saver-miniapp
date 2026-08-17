@@ -1,6 +1,9 @@
+import base64
+import binascii
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
-from app.schemas.api import RecognitionOut
+from app.schemas.api import Base64ImageInput, RecognitionOut
 from app.services.ai import recognize_ingredients
 from app.services.auth import HouseholdContext, get_household_context
 from app.services.rate_limit import ai_rate_limit
@@ -21,6 +24,21 @@ def detect_image_type(content: bytes) -> str | None:
     return None
 
 
+def validate_image(content: bytes, declared_type: str | None = None) -> str:
+    if not content:
+        raise HTTPException(status_code=400, detail="图片内容为空")
+    if len(content) > MAX_IMAGE_SIZE:
+        raise HTTPException(status_code=413, detail="图片不能超过 5MB")
+    detected_type = detect_image_type(content)
+    if detected_type is None:
+        raise HTTPException(status_code=400, detail="图片内容无效，请重新选择图片")
+    if declared_type and declared_type not in ALLOWED_TYPES:
+        raise HTTPException(status_code=415, detail="仅支持 JPG、PNG 或 WebP 图片")
+    if declared_type and detected_type != declared_type:
+        raise HTTPException(status_code=415, detail="图片格式与文件类型不一致")
+    return detected_type
+
+
 @router.post(
     "/recognize-ingredients",
     response_model=RecognitionOut,
@@ -32,16 +50,24 @@ async def recognize(
 ):
     del context
     content_type = file.content_type or ""
-    if content_type not in ALLOWED_TYPES:
-        raise HTTPException(status_code=415, detail="仅支持 JPG、PNG 或 WebP 图片")
     content = await file.read(MAX_IMAGE_SIZE + 1)
-    if not content:
-        raise HTTPException(status_code=400, detail="图片内容为空")
-    if len(content) > MAX_IMAGE_SIZE:
-        raise HTTPException(status_code=413, detail="图片不能超过 5MB")
-    detected_type = detect_image_type(content)
-    if detected_type is None:
-        raise HTTPException(status_code=400, detail="图片内容无效，请重新选择图片")
-    if detected_type != content_type:
-        raise HTTPException(status_code=415, detail="图片格式与文件类型不一致")
-    return recognize_ingredients(content, content_type)
+    detected_type = validate_image(content, content_type)
+    return recognize_ingredients(content, detected_type)
+
+
+@router.post(
+    "/recognize-ingredients/base64",
+    response_model=RecognitionOut,
+    dependencies=[Depends(ai_rate_limit)],
+)
+def recognize_base64(
+    payload: Base64ImageInput,
+    context: HouseholdContext = Depends(get_household_context),
+):
+    del context
+    try:
+        content = base64.b64decode(payload.image_base64, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="图片编码无效，请重新选择图片") from exc
+    detected_type = validate_image(content, payload.content_type)
+    return recognize_ingredients(content, detected_type)

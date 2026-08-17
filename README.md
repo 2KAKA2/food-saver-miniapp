@@ -14,7 +14,7 @@
 - 菜谱历史、详情和实际用量确认
 - 制作菜谱后事务化扣减库存并保存变更记录
 - 确认制作接口支持幂等重试，避免重复扣减库存
-- Redis 分布式限流保护微信登录与 AI 接口
+- 单实例使用内存限流；配置 Redis 后自动切换为分布式限流
 - 账号注销、个人资料匿名化、用户协议和隐私政策页面
 - 服务端记录用户同意的协议版本和时间，前后端版本不一致时拒绝登录
 - 生产环境关闭交互式接口文档，容器日志与数据库备份自动轮转
@@ -120,7 +120,7 @@ miniapp/dist/build/mp-weixin
 4. 重新执行 `npm run build:mp-weixin`。
 5. 确保 Windows 防火墙允许后端的 8000 端口访问；不要把关闭域名校验的设置用于正式体验版。
 
-正式上线时仍需在服务器私密环境中配置同一 AppID 与 AppSecret，并准备 HTTPS 服务器和微信小程序合法域名。
+正式上线仍需在服务端私密环境中配置同一 AppID 与 AppSecret。采用普通 HTTP API 时还需 HTTPS 合法域名；采用 CloudBase 云托管时，小程序可以改用 `wx.cloud.callContainer`，无需为 API 单独购买域名。复制 `miniapp/.env.cloudbase.example` 为 `miniapp/.env.production`，填写环境 ID 和服务名称后构建。完整步骤见 `deploy/cloudbase/README.md`。
 
 完整的本地真机联调步骤见 `docs/LOCAL_WECHAT_SETUP.md`。参考 EverShelf 后采用与暂缓的能力见 `docs/REFERENCE_PROJECTS.md`。
 
@@ -162,11 +162,17 @@ npm run build:mp-weixin
 docker compose --env-file .env.deploy config --quiet
 ```
 
+CloudBase 方案改为使用 `deploy/cloudbase/api.env.example` 和 `miniapp/.env.cloudbase.example`，检查命令为：
+
+```powershell
+.\api\.venv\Scripts\python.exe scripts\release_preflight.py --deploy-env deploy\cloudbase\api.env.example --miniapp-env miniapp\.env.cloudbase.example --template
+```
+
 该检查不会输出密钥内容，只会列出缺失、仍为占位值或互相不一致的配置项。
 
 ## 生产部署
 
-生产部署基线位于 `deploy/`，使用 Caddy 自动 HTTPS、FastAPI、MySQL 8.4 LTS 和 Redis。执行前需要准备备案域名、云服务器、微信 AppSecret 和 AI API Key，具体步骤见 `deploy/README.md`。
+推荐的无域名首发方案位于 `deploy/cloudbase/`，使用 CloudBase 云托管、CloudBase MySQL 和 `wx.cloud.callContainer`。传统自有服务器方案仍保留在 `deploy/README.md`。
 
 从云资源准备到微信提审的逐项清单见 `deploy/RELEASE_CHECKLIST.md`，可直接整理到微信公众平台的材料草案见 `docs/WECHAT_RELEASE_MATERIALS.md`。
 
@@ -174,7 +180,7 @@ docker compose --env-file .env.deploy config --quiet
 
 中国大陆云服务器的配置档位、备案、对象存储与监控方案见 `docs/CLOUD_DEPLOYMENT_OPTIONS.md`。
 
-生产环境会进行启动安全校验：使用 SQLite、缺少 Redis/微信/AI 配置、开启开发登录或演示数据时，API 会拒绝启动。`/health/live` 用于进程存活检查，`/health/ready` 用于数据库就绪检查。
+生产环境会拒绝 SQLite、缺少微信配置、开启开发登录或演示数据。Redis 和真实 AI 密钥由 `REQUIRE_REDIS`、`REQUIRE_AI_KEY` 控制；首发允许使用内存限流和备用 AI 结果。`/health/live` 用于进程存活检查，`/health/ready` 用于数据库及已启用 Redis 的就绪检查。
 
 ## 推荐演示流程
 

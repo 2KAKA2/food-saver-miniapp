@@ -45,6 +45,10 @@ jobs:
       - run: python ../scripts/check_npm_audit.py --cwd .
       - run: npm run build:h5
       - run: npm run build:mp-weixin
+      - name: Build CloudBase mini program variant
+        run: |
+          cp .env.cloudbase.example .env.production
+          npm run build:mp-weixin
 
   release-templates:
     runs-on: ubuntu-latest
@@ -58,6 +62,12 @@ jobs:
           python scripts/release_preflight.py
           --deploy-env .env.deploy.example
           --miniapp-env miniapp/.env.production.example
+          --template
+      - name: Validate CloudBase release templates
+        run: >-
+          python scripts/release_preflight.py
+          --deploy-env deploy/cloudbase/api.env.example
+          --miniapp-env miniapp/.env.cloudbase.example
           --template
       - name: Validate Compose configuration
         run: docker compose --env-file .env.deploy.example config --quiet

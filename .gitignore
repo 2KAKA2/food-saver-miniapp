@@ -13,3 +13,4 @@ miniapp/.env.local
 .vscode/
 .env.deploy
 backups/
+food-saver-api-cloudbase.zip

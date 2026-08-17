@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     api_v1_prefix: str = "/api/v1"
     database_url: str = "sqlite:///./data/food_inventory.db"
     redis_url: str = ""
+    require_redis: bool = False
     environment: str = "development"
     wechat_app_id: str = ""
     wechat_app_secret: str = ""
@@ -17,6 +18,7 @@ class Settings(BaseSettings):
     allow_dev_login: bool = False
     dev_login_secret: str = ""
     zhipu_api_key: str = ""
+    require_ai_key: bool = False
     zhipu_chat_model: str = "glm-4.7-flash"
     zhipu_vision_model: str = "glm-4.6v-flash"
     seed_demo_data: bool = False
@@ -41,9 +43,9 @@ class Settings(BaseSettings):
             problems.append("生产环境不能使用 SQLite")
         if not self.wechat_app_id or not self.wechat_app_secret:
             problems.append("缺少微信 AppID 或 AppSecret")
-        if not self.zhipu_api_key:
-            problems.append("缺少 AI 服务 API Key")
-        if not self.redis_url:
+        if self.require_ai_key and not self.zhipu_api_key:
+            problems.append("已要求真实 AI，但缺少 AI 服务 API Key")
+        if self.require_redis and not self.redis_url:
             problems.append("缺少 Redis 连接配置")
         if self.allow_dev_login:
             problems.append("生产环境必须关闭开发登录")

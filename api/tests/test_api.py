@@ -1,3 +1,4 @@
+import base64
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -52,12 +53,19 @@ def test_memory_rate_limiter_rejects_excess_requests():
 
 
 def test_production_configuration_fails_closed():
-    insecure = Settings(_env_file=None, environment="production", database_url="sqlite:///unsafe.db")
+    insecure = Settings(
+        _env_file=None,
+        environment="production",
+        database_url="sqlite:///unsafe.db",
+        require_redis=True,
+        require_ai_key=True,
+    )
     with pytest.raises(RuntimeError) as exc:
         insecure.validate_for_startup()
     assert "SQLite" in str(exc.value)
     assert "微信" in str(exc.value)
     assert "Redis" in str(exc.value)
+    assert "AI" in str(exc.value)
 
     secure = Settings(
         _env_file=None,
@@ -72,6 +80,18 @@ def test_production_configuration_fails_closed():
         allowed_hosts="api.example.com",
     )
     secure.validate_for_startup()
+
+    cloudbase_single_instance = Settings(
+        _env_file=None,
+        environment="production",
+        database_url="mysql+pymysql://user:pass@mysql/db",
+        wechat_app_id="wx-test",
+        wechat_app_secret="server-only-secret",
+        allow_dev_login=False,
+        seed_demo_data=False,
+        allowed_hosts="food-saver-api",
+    )
+    cloudbase_single_instance.validate_for_startup()
 
 
 def test_production_hides_interactive_api_documentation(monkeypatch):
@@ -220,6 +240,33 @@ def test_image_fallback_does_not_write_inventory(client):
     assert response.status_code == 200
     assert response.json()["source"] == "fallback"
     assert len(client.get("/api/v1/inventory").json()) == before
+
+
+def test_base64_image_fallback_does_not_write_inventory(client):
+    before = len(client.get("/api/v1/inventory").json())
+    encoded = base64.b64encode(b"\x89PNG\r\n\x1a\nminimal").decode("ascii")
+    response = client.post(
+        "/api/v1/ai/recognize-ingredients/base64",
+        json={"image_base64": encoded, "content_type": "image/png"},
+    )
+    assert response.status_code == 200
+    assert response.json()["source"] == "fallback"
+    assert len(client.get("/api/v1/inventory").json()) == before
+
+
+def test_base64_image_rejects_invalid_encoding_or_spoofed_content(client):
+    invalid = client.post(
+        "/api/v1/ai/recognize-ingredients/base64",
+        json={"image_base64": "not-base64***"},
+    )
+    assert invalid.status_code == 400
+
+    encoded = base64.b64encode(b"\x89PNG\r\n\x1a\nminimal").decode("ascii")
+    spoofed = client.post(
+        "/api/v1/ai/recognize-ingredients/base64",
+        json={"image_base64": encoded, "content_type": "image/jpeg"},
+    )
+    assert spoofed.status_code == 415
 
 
 def test_image_upload_rejects_invalid_or_spoofed_content(client):

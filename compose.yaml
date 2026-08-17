@@ -33,11 +33,14 @@ services:
     environment:
       APP_NAME: 食尽其用 API
       ENVIRONMENT: production
+      WEB_CONCURRENCY: 2
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
+      REQUIRE_REDIS: ${REQUIRE_REDIS:-true}
       WECHAT_APP_ID: ${WECHAT_APP_ID}
       WECHAT_APP_SECRET: ${WECHAT_APP_SECRET}
       ZHIPU_API_KEY: ${ZHIPU_API_KEY}
+      REQUIRE_AI_KEY: ${REQUIRE_AI_KEY:-true}
       ZHIPU_CHAT_MODEL: glm-4.7-flash
       ZHIPU_VISION_MODEL: glm-4.6v-flash
       SESSION_TTL_DAYS: 30

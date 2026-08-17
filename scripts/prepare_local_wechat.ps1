@@ -33,6 +33,7 @@ if ((Test-Path -LiteralPath $envPath) -and -not $Force) {
 }
 $content = @(
     "VITE_API_BASE_URL=http://${LanIp}:8000/api/v1"
+    "VITE_API_TRANSPORT=http"
     "VITE_AUTH_MODE=wechat"
     "VITE_LEGAL_VERSION=2026-08-17"
     "VITE_OPERATOR_NAME=$OperatorName"

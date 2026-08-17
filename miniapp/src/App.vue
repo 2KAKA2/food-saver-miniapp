@@ -1,6 +1,28 @@
 <script>
+import {
+  API_TRANSPORT,
+  CLOUDBASE_ENV_ID,
+  validateCloudBaseConfig,
+} from './config/runtime'
+
 export default {
   onLaunch() {
+    // #ifdef MP-WEIXIN
+    if (API_TRANSPORT === 'cloudbase') {
+      try {
+        validateCloudBaseConfig()
+        if (!wx.cloud) throw new Error('当前微信基础库不支持云开发')
+        wx.cloud.init({ env: CLOUDBASE_ENV_ID, traceUser: true })
+      } catch (error) {
+        console.error('CloudBase 初始化失败', error)
+        uni.showModal({
+          title: '服务配置错误',
+          content: error.message || 'CloudBase 初始化失败',
+          showCancel: false,
+        })
+      }
+    }
+    // #endif
     console.info('食尽其用小程序启动')
   },
 }
@@ -63,4 +85,3 @@ button::after {
   color: #909a93;
 }
 </style>
-

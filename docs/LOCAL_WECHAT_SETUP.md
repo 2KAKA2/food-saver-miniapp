@@ -49,4 +49,4 @@ npm run build:mp-weixin
 
 ## 5. 正式发布前必须替换
 
-面向所有用户发布时，必须把 `VITE_API_BASE_URL` 换成公网 HTTPS 地址，并在微信公众平台配置相同的 request 与 uploadFile 合法域名。本地 IP、关闭域名校验和仅局域网可访问的电脑服务都不能作为正式版配置。
+面向所有用户发布时，可以把 `VITE_API_BASE_URL` 换成公网 HTTPS 地址并配置合法域名，也可以采用 CloudBase 云托管的 `wx.cloud.callContainer` 无域名方案。两种方式都不能继续使用本地 IP 或关闭域名校验；CloudBase 方案见 `deploy/cloudbase/README.md`。
