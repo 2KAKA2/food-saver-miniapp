@@ -6,4 +6,4 @@ pydantic-settings==2.7.0
 python-multipart==0.0.32
 httpx==0.28.1
 PyMySQL==1.1.1
-redis==7.4.1
+redis==8.1.0
