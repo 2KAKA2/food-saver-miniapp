@@ -17,7 +17,7 @@ from app.schemas.api import (
     RecipeIngredient,
     RecipeOut,
 )
-from app.services.ai import generate_recipe
+from app.services.ai import fallback_recipe, generate_recipe
 from app.services.auth import HouseholdContext, get_household_context
 from app.services.inventory import calculate_status, inventory_sort_key, serialize_inventory
 from app.services.rate_limit import ai_rate_limit
@@ -48,7 +48,11 @@ def serialize_recipe(recipe: Recipe) -> RecipeOut:
 
 def _normalize_result(result: dict, valid_batches: dict[int, InventoryBatch], payload: RecipeGenerateRequest):
     ingredients = []
-    for raw in result.get("ingredients", []):
+    used_inventory_ids: set[int] = set()
+    raw_ingredients = result.get("ingredients", [])
+    if not isinstance(raw_ingredients, list):
+        raw_ingredients = []
+    for raw in raw_ingredients[:20]:
         try:
             item = RecipeIngredient.model_validate(raw)
         except ValidationError:
@@ -58,23 +62,50 @@ def _normalize_result(result: dict, valid_batches: dict[int, InventoryBatch], pa
             if not batch:
                 item.inventory_id = None
                 item.available = False
-            elif item.quantity > Decimal(batch.quantity):
-                item.quantity = Decimal(batch.quantity)
+            elif item.inventory_id in used_inventory_ids:
+                continue
+            else:
+                used_inventory_ids.add(item.inventory_id)
+                item.name = batch.name
+                item.unit = batch.unit
+                item.available = True
+                if item.quantity > Decimal(batch.quantity):
+                    item.quantity = Decimal(batch.quantity)
+        else:
+            item.available = False
         ingredients.append(item)
     missing = []
-    for raw in result.get("missing_ingredients", []):
+    raw_missing = result.get("missing_ingredients", [])
+    if not isinstance(raw_missing, list):
+        raw_missing = []
+    for raw in raw_missing[:20]:
         try:
             missing.append(MissingIngredient.model_validate(raw))
         except ValidationError:
             continue
-    steps = [str(step).strip() for step in result.get("steps", []) if str(step).strip()]
+    raw_steps = result.get("steps", [])
+    if not isinstance(raw_steps, list):
+        raw_steps = []
+    steps = [step.strip()[:500] for step in raw_steps[:20] if isinstance(step, str) and step.strip()]
     if not steps:
         steps = ["清洗并处理食材。", "依次烹饪至熟透。", "调味后装盘。"]
+    raw_title = result.get("title")
+    title = raw_title.strip()[:120] if isinstance(raw_title, str) and raw_title.strip() else "AI 推荐菜谱"
+    raw_difficulty = result.get("difficulty")
+    difficulty = (
+        raw_difficulty.strip()[:20]
+        if isinstance(raw_difficulty, str) and raw_difficulty.strip()
+        else "简单"
+    )
+    try:
+        cook_time = int(result.get("cook_time_minutes", 20))
+    except (TypeError, ValueError, OverflowError):
+        cook_time = 20
     return {
-        "title": str(result.get("title") or "AI 推荐菜谱")[:120],
+        "title": title,
         "servings": payload.servings,
-        "cook_time_minutes": max(5, min(int(result.get("cook_time_minutes", 20)), payload.max_minutes)),
-        "difficulty": str(result.get("difficulty") or "简单")[:20],
+        "cook_time_minutes": max(5, min(cook_time, payload.max_minutes)),
+        "difficulty": difficulty,
         "ingredients": [item.model_dump(mode="json") for item in ingredients],
         "missing_ingredients": [item.model_dump(mode="json") for item in missing],
         "steps": steps,
@@ -114,6 +145,12 @@ def create_recipe(
         raise HTTPException(status_code=400, detail="没有可用于生成菜谱的库存食材")
     raw_result = generate_recipe(batches, payload.servings, payload.flavor, payload.max_minutes)
     result = _normalize_result(raw_result, {item.id: item for item in batches}, payload)
+    if not any(item["inventory_id"] is not None for item in result["ingredients"]):
+        result = _normalize_result(
+            fallback_recipe(batches, payload.servings, payload.max_minutes),
+            {item.id: item for item in batches},
+            payload,
+        )
     recipe = Recipe(
         household_id=context.household.id,
         created_by_user_id=context.user.id,

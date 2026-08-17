@@ -50,38 +50,56 @@ class DashboardOut(BaseModel):
 
 
 class RecognizedIngredient(BaseModel):
-    name: str
-    category: str = "其他"
-    quantity: Decimal = Decimal("1")
-    unit: str = "份"
+    name: str = Field(min_length=1, max_length=80)
+    category: str = Field(default="其他", max_length=40)
+    quantity: Decimal = Field(default=Decimal("1"), gt=0, le=100000, decimal_places=2)
+    unit: str = Field(default="份", min_length=1, max_length=20)
     confidence: float = Field(default=0.5, ge=0, le=1)
+
+    @field_validator("name", "category", "unit", mode="before")
+    @classmethod
+    def strip_recognition_text(cls, value):
+        return value.strip() if isinstance(value, str) else value
 
 
 class RecognitionOut(BaseModel):
     source: Literal["ai", "fallback"]
-    items: list[RecognizedIngredient]
+    items: list[RecognizedIngredient] = Field(max_length=20)
     message: str = ""
 
 
 class RecipeGenerateRequest(BaseModel):
-    inventory_ids: list[int] = Field(default_factory=list)
+    inventory_ids: list[int] = Field(default_factory=list, max_length=100)
     servings: int = Field(default=2, ge=1, le=10)
     flavor: str = Field(default="家常", max_length=30)
     max_minutes: int = Field(default=30, ge=5, le=240)
 
+    @field_validator("flavor")
+    @classmethod
+    def validate_flavor(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("口味不能为空")
+        return cleaned
+
+    @field_validator("inventory_ids")
+    @classmethod
+    def unique_inventory_ids(cls, value: list[int]) -> list[int]:
+        return list(dict.fromkeys(value))
+
 
 class RecipeIngredient(BaseModel):
     inventory_id: int | None = None
-    name: str
-    quantity: Decimal = Field(gt=0)
-    unit: str
+    name: str = Field(min_length=1, max_length=80)
+    quantity: Decimal = Field(gt=0, le=100000, decimal_places=2)
+    unit: str = Field(min_length=1, max_length=20)
     available: bool = True
 
 
 class MissingIngredient(BaseModel):
-    name: str
-    quantity: Decimal = Field(gt=0)
-    unit: str
+    name: str = Field(min_length=1, max_length=80)
+    quantity: Decimal = Field(gt=0, le=100000, decimal_places=2)
+    unit: str = Field(min_length=1, max_length=20)
 
 
 class RecipeOut(BaseModel):
@@ -105,10 +123,9 @@ class ConsumptionItem(BaseModel):
 
 
 class CookRequest(BaseModel):
-    consumptions: list[ConsumptionItem] = Field(min_length=1)
+    consumptions: list[ConsumptionItem] = Field(min_length=1, max_length=100)
 
 
 class CookOut(BaseModel):
     recipe: RecipeOut
     updated_inventory: list[InventoryOut]
-

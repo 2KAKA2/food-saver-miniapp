@@ -3,7 +3,10 @@ from decimal import Decimal
 
 from sqlalchemy import func, select
 
+from app.api.v1.endpoints.recipes import _normalize_result
 from app.models.entities import InventoryBatch, StockChange
+from app.schemas.api import RecipeGenerateRequest
+from app.services import ai
 from app.services.inventory import calculate_status
 from app.services.rate_limit import RateLimiter, limiter
 from fastapi import HTTPException
@@ -197,6 +200,114 @@ def test_image_upload_rejects_invalid_or_spoofed_content(client):
         files={"file": ("food.jpg", b"\x89PNG\r\n\x1a\nminimal", "image/jpeg")},
     )
     assert spoofed.status_code == 415
+
+
+def test_recipe_model_output_cannot_spoof_or_overdraw_inventory():
+    batch = InventoryBatch(
+        id=77,
+        household_id=1,
+        created_by_user_id=1,
+        name="西红柿",
+        category="蔬菜",
+        quantity=Decimal("3"),
+        unit="个",
+        location="冷藏",
+    )
+    payload = RecipeGenerateRequest(
+        inventory_ids=[77, 77], servings=2, flavor=" 家常 ", max_minutes=30
+    )
+    result = _normalize_result(
+        {
+            "title": {"不可信": True},
+            "cook_time_minutes": "not-a-number",
+            "difficulty": {"level": "hard"},
+            "ingredients": [
+                {
+                    "inventory_id": 77,
+                    "name": "伪造名称",
+                    "quantity": "999",
+                    "unit": "公斤",
+                    "available": False,
+                },
+                {
+                    "inventory_id": 77,
+                    "name": "重复食材",
+                    "quantity": "1",
+                    "unit": "份",
+                },
+                {
+                    "inventory_id": 999,
+                    "name": "不存在的批次",
+                    "quantity": "1",
+                    "unit": "份",
+                },
+                {"inventory_id": None, "name": "非法负数", "quantity": "-1", "unit": "份"},
+            ],
+            "missing_ingredients": "not-a-list",
+            "steps": {"step": "not-a-list"},
+            "source": "ai",
+        },
+        {77: batch},
+        payload,
+    )
+
+    assert payload.inventory_ids == [77]
+    assert payload.flavor == "家常"
+    assert result["title"] == "AI 推荐菜谱"
+    assert result["cook_time_minutes"] == 20
+    assert result["difficulty"] == "简单"
+    assert result["steps"] == ["清洗并处理食材。", "依次烹饪至熟透。", "调味后装盘。"]
+    valid_items = [item for item in result["ingredients"] if item["inventory_id"] == 77]
+    assert len(valid_items) == 1
+    assert valid_items[0]["name"] == "西红柿"
+    assert valid_items[0]["unit"] == "个"
+    assert Decimal(valid_items[0]["quantity"]) == Decimal("3")
+    assert valid_items[0]["available"] is True
+    assert any(
+        item["name"] == "不存在的批次"
+        and item["inventory_id"] is None
+        and item["available"] is False
+        for item in result["ingredients"]
+    )
+
+
+def test_vision_model_output_is_validated_and_capped(monkeypatch):
+    model_items = [
+        {
+            "name": " 西红柿 ",
+            "category": " 蔬菜 ",
+            "quantity": "2",
+            "unit": " 个 ",
+            "confidence": 0.9,
+        },
+        {
+            "name": "非法数量",
+            "category": "其他",
+            "quantity": "-1",
+            "unit": "份",
+            "confidence": 0.5,
+        },
+        *[
+            {
+                "name": f"食材{i}",
+                "category": "其他",
+                "quantity": "1",
+                "unit": "份",
+                "confidence": 0.5,
+            }
+            for i in range(25)
+        ],
+    ]
+    monkeypatch.setattr(ai, "_zhipu_chat", lambda *args, **kwargs: model_items)
+
+    result = ai.recognize_ingredients(b"image-data", "image/png")
+
+    assert result["source"] == "ai"
+    assert len(result["items"]) == 19
+    assert result["items"][0]["name"] == "西红柿"
+    assert result["items"][0]["category"] == "蔬菜"
+    assert result["items"][0]["unit"] == "个"
+    assert all(item["name"] != "非法数量" for item in result["items"])
 
 
 def test_household_invite_and_cross_household_isolation(client):

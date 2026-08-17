@@ -1,15 +1,19 @@
 import base64
 import json
+import logging
 import re
 from decimal import Decimal
 
 import httpx
+from pydantic import ValidationError
 
 from app.core.config import settings
 from app.models.entities import InventoryBatch
+from app.schemas.api import RecognizedIngredient
 
 
 ZHIPU_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+logger = logging.getLogger("food_saver.ai")
 
 
 def _extract_json(text: str):
@@ -121,7 +125,8 @@ missing_ingredients 每项包含 name、quantity、unit；steps 是字符串数�
         result["source"] = "ai"
         result["servings"] = servings
         return result
-    except Exception:
+    except Exception as exc:
+        logger.warning("ai_fallback operation=recipe error_type=%s", type(exc).__name__)
         return fallback_recipe(batches, servings, max_minutes)
 
 
@@ -148,8 +153,20 @@ def recognize_ingredients(image_bytes: bytes, content_type: str) -> dict:
         )
         if isinstance(items, dict):
             items = items.get("items", [])
-        return {"source": "ai", "items": items, "message": "识别完成，请确认后再加入库存"}
-    except Exception:
+        if not isinstance(items, list):
+            raise ValueError("识别结果不是数组")
+        normalized = []
+        for raw in items[:20]:
+            try:
+                item = RecognizedIngredient.model_validate(raw)
+            except ValidationError:
+                continue
+            normalized.append(item.model_dump(mode="json"))
+        if not normalized:
+            raise ValueError("识别结果没有有效食材")
+        return {"source": "ai", "items": normalized, "message": "识别完成，请确认后再加入库存"}
+    except Exception as exc:
+        logger.warning("ai_fallback operation=vision error_type=%s", type(exc).__name__)
         return {
             "source": "fallback",
             "items": [
@@ -158,4 +175,3 @@ def recognize_ingredients(image_bytes: bytes, content_type: str) -> dict:
             ],
             "message": "AI 暂不可用，已返回演示识别结果，请修改确认",
         }
-

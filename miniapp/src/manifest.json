@@ -5,6 +5,9 @@
   "versionName": "0.1.0",
   "versionCode": "100",
   "transformPx": false,
+  "uniStatistics": {
+    "enable": false
+  },
   "h5": {
     "router": { "mode": "hash" },
     "title": "食尽其用"
@@ -19,4 +22,3 @@
     "usingComponents": true
   }
 }
-
