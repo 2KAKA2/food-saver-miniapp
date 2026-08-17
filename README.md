@@ -163,6 +163,8 @@ docker compose --env-file .env.deploy config --quiet
 
 当前已验证能力、端到端测试证据和剩余上线条件见 `docs/RELEASE_STATUS.md`。
 
+中国大陆云服务器的配置档位、备案、对象存储与监控方案见 `docs/CLOUD_DEPLOYMENT_OPTIONS.md`。
+
 生产环境会进行启动安全校验：使用 SQLite、缺少 Redis/微信/AI 配置、开启开发登录或演示数据时，API 会拒绝启动。`/health/live` 用于进程存活检查，`/health/ready` 用于数据库就绪检查。
 
 ## 推荐演示流程

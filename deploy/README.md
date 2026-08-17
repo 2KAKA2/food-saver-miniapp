@@ -2,6 +2,8 @@
 
 该目录提供单台中国大陆云服务器的首发部署方案：Caddy 自动 HTTPS、FastAPI、MySQL 8.4 LTS 和 Redis 限流。API、数据库和 Redis 不直接暴露到公网，公网只开放 80/443。
 
+云厂商、配置档位、备案、对象存储和告警建议见 `docs/CLOUD_DEPLOYMENT_OPTIONS.md`。
+
 ## 上线前置条件
 
 1. 购买中国大陆云服务器并完成实名认证。
