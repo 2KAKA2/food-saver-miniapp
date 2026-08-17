@@ -43,7 +43,6 @@ jobs:
           python-version: "3.12"
       - run: npm ci
       - run: python ../scripts/check_npm_audit.py --cwd .
-      - run: npm run build:h5
       - run: npm run build:mp-weixin
       - name: Build CloudBase mini program variant
         run: |

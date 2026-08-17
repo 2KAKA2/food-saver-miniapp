@@ -1,8 +1,8 @@
 """Fail on unexpected high/critical npm advisories.
 
 Vite 5.2.8 is temporarily accepted because the current DCloud uni-app plugin
-declares that exact peer version. The development server must remain local and
-H5 output is not part of the public mini-program deployment.
+declares that exact peer version. The development server must remain local;
+only the WeChat mini-program build is distributed.
 """
 
 from __future__ import annotations

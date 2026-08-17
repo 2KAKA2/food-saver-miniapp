@@ -18,7 +18,7 @@
 - 账号注销、个人资料匿名化、用户协议和隐私政策页面
 - 服务端记录用户同意的协议版本和时间，前后端版本不一致时拒绝登录
 - 生产环境关闭交互式接口文档，容器日志与数据库备份自动轮转
-- H5 与微信小程序双端构建
+- 专注微信小程序构建与发布
 - 本地电脑断连时按家庭显示最近一次库存只读快照
 - 首页、库存、AI 菜谱、记录和我的使用带选中态的原生底部导航图标
 
@@ -88,18 +88,6 @@ VITE_AI_PROVIDER_NAME=实际使用的AI服务提供方名称
 
 本地开发可以保留 `ALLOW_DEV_LOGIN=true` 和 `VITE_AUTH_MODE=dev`，但生产服务器必须关闭开发登录。开发登录密钥只用于本机联调，不能用于正式环境。
 
-## 运行手机端网页
-
-另开一个 PowerShell，进入 `miniapp` 目录：
-
-```powershell
-npm install
-Copy-Item .env.example .env
-npm run dev:h5
-```
-
-浏览器访问终端显示的地址即可。默认后端地址是 `http://127.0.0.1:8000/api/v1`。
-
 ## 运行微信小程序
 
 ```powershell
@@ -148,12 +136,11 @@ cd api
 
 ```powershell
 cd miniapp
-npm run build:h5
 npm run build:mp-weixin
 ..\api\.venv\Scripts\python.exe ..\scripts\check_npm_audit.py --cwd .
 ```
 
-仓库包含 GitHub Actions 自动检查，会在推送和合并请求时执行后端测试、数据库迁移校验、H5/微信小程序构建和部署模板检查。
+仓库包含 GitHub Actions 自动检查，会在推送和合并请求时执行后端测试、数据库迁移校验、微信小程序构建和部署模板检查。
 
 正式发布前，复制并填写 `.env.deploy` 与 `miniapp/.env.production`，再从项目根目录执行：
 
@@ -179,6 +166,8 @@ CloudBase 方案改为使用 `deploy/cloudbase/api.env.example` 和 `miniapp/.en
 当前已验证能力、端到端测试证据和剩余上线条件见 `docs/RELEASE_STATUS.md`。
 
 中国大陆云服务器的配置档位、备案、对象存储与监控方案见 `docs/CLOUD_DEPLOYMENT_OPTIONS.md`。
+
+本地后端、微信小程序、真机、测试、CloudBase、Docker 和 Git 的完整命令汇总见 `docs/RUN_COMMANDS.md`。
 
 生产环境会拒绝 SQLite、缺少微信配置、开启开发登录或演示数据。Redis 和真实 AI 密钥由 `REQUIRE_REDIS`、`REQUIRE_AI_KEY` 控制；首发允许使用内存限流和备用 AI 结果。`/health/live` 用于进程存活检查，`/health/ready` 用于数据库及已启用 Redis 的就绪检查。
 

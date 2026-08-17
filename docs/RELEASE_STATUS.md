@@ -31,7 +31,7 @@
 - 数据库：Alembic 无遗漏迁移。
 - Python 生产依赖：`pip-audit` 未发现已知漏洞。
 - 前端依赖：除 DCloud 当前强制使用的 Vite 5 构建工具例外外，无其他高危或严重漏洞；CI 会阻止新增问题。
-- 构建：H5、普通 HTTP `mp-weixin` 和 CloudBase `mp-weixin` 均成功。
+- 构建：本地 HTTP `mp-weixin` 和 CloudBase `mp-weixin` 均成功。
 - 部署：Docker Compose 配置解析通过。
 - 发布配置：Compose 与 CloudBase 两套示例模板结构检查通过，含占位符的配置会被正式发布体检阻止。
 

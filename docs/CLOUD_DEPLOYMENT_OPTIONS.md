@@ -6,7 +6,7 @@
 
 当前已确定首发优先采用 CloudBase：FastAPI 部署到云托管、业务数据使用 CloudBase MySQL、小程序通过 `wx.cloud.callContainer` 调用。该方案无需为纯小程序 API 单独申请域名，且现有 Dockerfile、SQLAlchemy 和 Alembic 可以继续使用。
 
-腾讯云轻量应用服务器上的 Docker Compose 保留为需要 H5、公开 API 或完整自主管理时的备选方案；阿里云轻量服务器同样可以运行该备选架构。
+腾讯云轻量应用服务器上的 Docker Compose 保留为需要公开 API 或完整自主管理时的备选方案；阿里云轻量服务器同样可以运行该备选架构。
 
 ## CloudBase 首发架构
 

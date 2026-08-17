@@ -8,10 +8,6 @@
   "uniStatistics": {
     "enable": false
   },
-  "h5": {
-    "router": { "mode": "hash" },
-    "title": "食尽其用"
-  },
   "mp-weixin": {
     "appid": "wx30ddd1061d78b551",
     "setting": {
